@@ -771,9 +771,6 @@ button:focus-visible, input:focus-visible {
             </select>
           </div>
           <div>
-            <label for="host-health-path">Health check path</label>
-            <input id="host-health-path" placeholder="/health">
-            <div class="helper">Overrides the default health probe for this host.</div>
           </div>
         </div>
       </div>
@@ -1345,9 +1342,8 @@ button:focus-visible, input:focus-visible {
         const exploits = exploitBadge(h.exploit_blocks || {});
         let backends = '';
         const lbBadge = `<span class="badge info">LB: ${loadBalancingLabel(h.load_balancing)}</span>`;
-        const healthPathBadge = h.health_check_path ? `<span class="badge info">Health: ${esc(h.health_check_path)}</span>` : '';
         if (h.backends?.length) {
-          backends += `<div style="margin-bottom:8px;">${lbBadge} ${healthPathBadge}</div>`;
+          backends += `<div style="margin-bottom:8px;">${lbBadge}</div>`;
         }
         for (const b of h.backends) {
           const health = h.health?.[b] || {};
@@ -2029,7 +2025,6 @@ button:focus-visible, input:focus-visible {
       applyWafProfile('minimal');
       document.getElementById('host-security-template').value = 'balanced';
       document.getElementById('host-load-balancing').value = 'round_robin';
-      document.getElementById('host-health-path').value = '';
       document.getElementById('host-origin-shield').checked = true;
       document.getElementById('host-rate-limit').value = '120';
       document.getElementById('host-allowlist').value = '';
@@ -2080,7 +2075,6 @@ button:focus-visible, input:focus-visible {
       }
       document.getElementById('host-security-template').value = h.security_template || 'custom';
       document.getElementById('host-load-balancing').value = h.load_balancing || 'round_robin';
-      document.getElementById('host-health-path').value = h.health_check_path || '';
       document.getElementById('host-origin-shield').checked = !!h.origin_shield;
       document.getElementById('host-rate-limit').value = h.rate_limit_per_minute || '';
       document.getElementById('host-allowlist').value = joinList(h.allowlist);
@@ -2109,7 +2103,6 @@ button:focus-visible, input:focus-visible {
       const wafRules = getWafRules();
       const securityTemplate = document.getElementById('host-security-template').value;
       const loadBalancing = document.getElementById('host-load-balancing').value;
-      const healthCheckPath = document.getElementById('host-health-path').value.trim();
       const securityIntegrations = {
         fail2ban: document.getElementById('host-fail2ban').checked,
         crowdsec: document.getElementById('host-crowdsec').checked
@@ -2135,7 +2128,6 @@ button:focus-visible, input:focus-visible {
         require_auth: requireAuth,
         exploit_blocks: exploitBlocks,
         load_balancing: loadBalancing,
-        health_check_path: healthCheckPath,
         security_template: securityTemplate,
         security_integrations: securityIntegrations,
         waf_enabled: wafEnabled,
