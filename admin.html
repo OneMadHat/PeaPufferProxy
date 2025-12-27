@@ -1,0 +1,2744 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .IsLogin}}Login - {{.Host}}{{else}}PuffProxy{{end}}</title>
+  <style>
+  {{if .IsLogin}}
+:root {
+    color-scheme: light dark;
+    --bg: #0d1117;
+    --panel: #161b22;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --border: #30363d;
+}
+[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f7f7f9;
+    --panel: #ffffff;
+    --text: #101828;
+    --muted: #475467;
+    --accent: #2563eb;
+    --border: #d0d5dd;
+}
+body {
+    font-family: system-ui, sans-serif;
+    max-width: 400px;
+    margin: 4rem auto;
+    background: var(--bg);
+    color: var(--text);
+    padding: 0 1.5rem;
+}
+h2 { text-align: center; }
+form { display: flex; flex-direction: column; gap: 1rem; }
+label { display: block; }
+input[type=text], input[type=password] {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+}
+button {
+    padding: 0.75rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+}
+button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+.top-actions { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.error { color: #b42318; background: rgba(180, 35, 24, 0.12); border: 1px solid rgba(180, 35, 24, 0.3); padding: 0.75rem; border-radius: 8px; }
+  {{else}}
+    :root {
+      color-scheme: light dark;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --card: #21262d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #238636;
+      --warning: #bb8009;
+      --danger: #da3633;
+      --border: #30363d;
+      --hover-bg: rgba(255,255,255,0.06);
+      --active-bg: rgba(88,166,255,0.15);
+      --badge-success-bg: #23863633;
+      --badge-success-text: #7ee787;
+      --badge-warning-bg: #bb800933;
+      --badge-warning-text: #ffbc4c;
+      --badge-danger-bg: #da363333;
+      --badge-danger-text: #fda29b;
+      --badge-info-bg: #1f6feb33;
+      --badge-info-text: #79c0ff;
+      --badge-debug-bg: #30363d;
+      --badge-debug-text: #c9d1d9;
+      --dot-success: #3fb950;
+      --dot-warning: #d29922;
+      --dot-danger: #f85149;
+    }
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #f7f7f9;
+      --panel: #ffffff;
+      --card: #ffffff;
+      --text: #101828;
+      --muted: #475467;
+      --accent: #2563eb;
+      --success: #1f7a33;
+      --warning: #9b6a07;
+      --danger: #b42318;
+      --border: #d0d5dd;
+      --hover-bg: rgba(16,24,40,0.06);
+      --active-bg: rgba(37,99,235,0.12);
+      --badge-success-bg: #dcfce7;
+      --badge-success-text: #166534;
+      --badge-warning-bg: #fef3c7;
+      --badge-warning-text: #92400e;
+      --badge-danger-bg: #fee2e2;
+      --badge-danger-text: #b91c1c;
+      --badge-info-bg: #dbeafe;
+      --badge-info-text: #1d4ed8;
+      --badge-debug-bg: #f2f4f7;
+      --badge-debug-text: #344054;
+      --dot-success: #16a34a;
+      --dot-warning: #d97706;
+      --dot-danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); padding: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .brand { font-size: 1.6rem; font-weight: bold; margin-bottom: 40px; }
+    .nav { display: flex; flex-direction: column; gap: 8px; }
+    .nav button { all: unset; cursor: pointer; padding: 14px 18px; border-radius: 8px; color: var(--text); transition: background 0.2s; }
+    .nav button:hover { background: var(--hover-bg); }
+    .nav button.active { background: var(--active-bg); border-left: 4px solid var(--accent); }
+    .main { flex: 1; padding: 32px; overflow-y: auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+    .topbar h1 { font-size: 1.8rem; }
+    .pill { background: var(--panel); padding: 8px 14px; border-radius: 999px; font-size: 0.9rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .action-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .action-group { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; min-width: 0; }
+    .action-right { margin-left: auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .action-field { min-width: 160px; }
+    .action-row .search-input { flex: 1 1 220px; min-width: 180px; }
+    .btn { cursor: pointer; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); transition: 0.2s; }
+    .btn:hover { background: var(--hover-bg); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    input, select, textarea { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); width: 100%; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px; color: var(--muted); font-weight: 600; }
+    td { padding: 16px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    .badge { padding: 5px 10px; border-radius: 999px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
+    .badge.success { background: var(--badge-success-bg); color: var(--badge-success-text); }
+    .badge.warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
+    .badge.danger { background: var(--badge-danger-bg); color: var(--badge-danger-text); }
+    .badge.info { background: var(--badge-info-bg); color: var(--badge-info-text); }
+    .badge.debug { background: var(--badge-debug-bg); color: var(--badge-debug-text); }
+    .security-cell { display: grid; gap: 6px; font-size: 0.85rem; }
+    .security-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .security-label { color: var(--muted); min-width: 86px; font-weight: 600; }
+    .security-muted { color: var(--muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.success { background: var(--dot-success); }
+    .dot.warning { background: var(--dot-warning); }
+    .dot.danger { background: var(--dot-danger); }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal.open { display: flex; }
+    .sheet { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: min(900px, 95%); max-height: 90vh; overflow-y: auto; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    label { display: block; margin: 16px 0 8px; color: var(--muted); font-size: 0.9rem; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+    .checkbox-group input { width: auto; }
+    .checkbox-group label { margin: 0; color: var(--text); cursor: pointer; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--success); color: #fff; padding: 14px 24px; border-radius: 8px; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 2000; }
+    .toast.show { display: block; animation: fade 4s forwards; }
+    .toast.error { background: var(--danger); }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 16px; }
+    .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .stat-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 6px; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; }
+    .stat-sub { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+    .chart { width: 100%; height: 220px; margin-top: 18px; }
+    .chart svg { width: 100%; height: 100%; display: block; }
+    .btn.small { padding: 6px 10px; font-size: 0.85rem; }
+    .trend-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+    .trend-range { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .trend-label { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+    .trend-range .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .form-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .form-section h4 { font-size: 1rem; margin-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .split-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .section-block { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .section-block .form-grid { margin-bottom: 8px; }
+    .section-block h4 { margin-top: 0; }
+    .required { color: var(--danger); font-weight: 600; margin-left: 4px; }
+    .helper { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+    .helper.waf-hint { margin: 6px 0 8px; }
+    .bar-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+    .bar-row { display: grid; grid-template-columns: 140px 1fr auto; gap: 12px; align-items: center; }
+    .bar-label { color: var(--muted); font-size: 0.9rem; }
+    .bar-track { background: var(--panel); border: 1px solid var(--border); border-radius: 999px; height: 12px; overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7dd3fc); }
+    .bar-value { color: var(--muted); font-size: 0.85rem; }
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 24px;
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      z-index: 2001;
+      text-decoration: none;
+    }
+    .skip-link:focus { top: 24px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+    @keyframes fade { 0%,100% { opacity: 0; transform: translateY(20px); } 10%,90% { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main { padding: 20px; }
+      .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .split { grid-template-columns: 1fr; }
+      .row { align-items: stretch; }
+      .action-right { margin-left: 0; width: 100%; justify-content: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .main { padding: 16px; }
+      .card { padding: 16px; }
+      .row { flex-direction: column; }
+      .row > * { width: 100%; }
+      table { min-width: 720px; }
+    }
+  {{end}}
+  </style>
+</head>
+<body{{if .IsLogin}} class="login-page"{{end}}>
+{{if .IsLogin}}
+<div class="top-actions">
+        <button type="button" id="theme-toggle" aria-pressed="false">Switch theme</button>
+    </div>
+    <h2>Login required for {{.Host}}</h2>
+    <div id="login-error" role="alert" aria-live="assertive">{{.ErrorMsg}}</div>
+    <form method="post" action="{{.Action}}">
+        <input type="hidden" name="return" value="{{.ReturnURL}}">
+        <label>
+            Username<br>
+            <input type="text" name="user" autocomplete="username" required>
+        </label>
+        <label>
+            Password<br>
+            <input type="password" name="pass" autocomplete="current-password" required>
+        </label>
+        <button class="primary" type="submit">Login</button>
+    </form>
+{{else}}
+<a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">PuffProxy</div>
+      <nav class="nav" aria-label="Primary">
+        <button id="tab-hosts" class="active">Proxy Hosts</button>
+        <button id="tab-certs">SSL Certificates</button>
+        <button id="tab-users">Users</button>
+        <button id="tab-streams">Streams</button>
+        <button id="tab-plugins">Plugins</button>
+        <button id="tab-stats">Statistics</button>
+        <button id="tab-defaults">Help</button>
+        <button id="tab-config">Config</button>
+        <button id="tab-audit">Audit</button>
+        <button id="tab-logs">Logs</button>
+      </nav>
+    </aside>
+
+    <main class="main" id="main-content" role="main">
+      <div class="topbar">
+        <h1 id="page-title">Proxy Hosts</h1>
+        <div class="row" style="gap:12px;">
+          <button class="btn" type="button" id="theme-toggle" aria-pressed="true">Switch to light mode</button>
+          <div class="pill">CSRF: <code id="csrf">{{.CSRF}}</code></div>
+        </div>
+      </div>
+
+      <!-- Hosts Tab -->
+      <section id="page-hosts">
+        <div class="card">
+          <div class="action-row">
+            <div class="action-group" style="flex:1 1 320px;">
+              <button class="btn primary">+ Add Proxy Host</button>
+              <label class="sr-only" for="host-search">Search domains</label>
+              <input type="text" id="host-search" class="search-input" placeholder="Search domains..." aria-describedby="host-search-help">
+              <span class="sr-only" id="host-search-help">Filter proxy hosts by domain name.</span>
+            </div>
+            <div class="action-right">
+              <div class="action-field">
+                <label for="hosts-per-page" style="margin:0 0 6px;">Entries per page</label>
+                <select id="hosts-per-page">
+                  <option value="10">10</option>
+                  <option value="20" selected>20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+              <button class="btn">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Proxy Hosts</h2>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">Configured proxy hosts.</caption>
+              <thead><tr><th>Domain</th><th>SSL</th><th>Auth</th><th>WebSocket</th><th>Exploit Block</th><th>Security</th><th>Backends & Health</th><th>Actions</th></tr></thead>
+              <tbody id="hosts-tbody"></tbody>
+            </table>
+          </div>
+          <div id="hosts-pagination" class="row" style="margin-top:16px;"></div>
+        </div>
+      </section>
+
+      <!-- Certs Tab -->
+      <section id="page-certs" style="display:none">
+        <div class="card">
+          <div class="row">
+            <button class="btn primary">+ Add Certificate</button>
+            <label class="sr-only" for="cert-search">Search certificates</label>
+            <input type="text" id="cert-search" placeholder="Search certificates..." aria-describedby="cert-search-help">
+            <span class="sr-only" id="cert-search-help">Filter certificates by name.</span>
+            <button class="btn">Refresh</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>SSL Certificates</h2>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">SSL certificates and renewal status.</caption>
+              <thead><tr><th>Name</th><th>Type</th><th>Domain</th><th>Auto-Renew</th><th>Paths</th><th>Actions</th></tr></thead>
+              <tbody id="certs-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Users Tab -->
+      <section id="page-users" style="display:none">
+        <div class="card">
+          <div class="row">
+            <button class="btn primary">+ Add User</button>
+            <button class="btn">Refresh</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Users (for domain authentication)</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">These users are used only for domains where "Require Authentication" is enabled.</p>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">Users that can access protected domains.</caption>
+              <thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Streams Tab -->
+      <section id="page-streams" style="display:none">
+        <div class="card">
+          <div class="row">
+            <button class="btn primary">+ Add Stream Proxy</button>
+            <button class="btn">Refresh</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>TCP/UDP Stream Proxies</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">Expose non-HTTP services (databases, RDP, game servers) with simple TCP/UDP forwarding.</p>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">Configured TCP/UDP stream proxies.</caption>
+              <thead><tr><th>Name</th><th>Protocol</th><th>Listen</th><th>Backend</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="streams-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Plugins Tab -->
+      <section id="page-plugins" style="display:none">
+        <div class="card">
+          <h2>Plugins & Modules</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">Enable or disable optional middleware modules. Disabled plugins remain installed for quick rollback.</p>
+          <div id="plugins-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+      </section>
+
+      <section id="page-stats" style="display:none;">
+        <div class="card">
+          <h2>Fleet snapshot</h2>
+          <p style="color:var(--muted); margin-top:6px;">Key service metrics and adoption rates across your proxy estate.</p>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Active hosts</div>
+              <div class="stat-value" id="stats-hosts-total">0</div>
+              <div class="stat-sub" id="stats-hosts-note">0 with SSL</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">SSL coverage</div>
+              <div class="stat-value" id="stats-ssl-coverage">0%</div>
+              <div class="stat-sub" id="stats-ssl-note">0 certificates</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">WAF enabled</div>
+              <div class="stat-value" id="stats-waf-coverage">0%</div>
+              <div class="stat-sub" id="stats-waf-note">0 of 0 hosts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Plugins active</div>
+              <div class="stat-value" id="stats-plugins-enabled">0</div>
+              <div class="stat-sub" id="stats-plugins-note">0 available</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Rate limits</div>
+              <div class="stat-value" id="stats-rate-limit">0</div>
+              <div class="stat-sub" id="stats-rate-limit-note">0 of 0 hosts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Auth protected</div>
+              <div class="stat-value" id="stats-auth-required">0</div>
+              <div class="stat-sub" id="stats-auth-required-note">0 of 0 hosts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Origin shielded</div>
+              <div class="stat-value" id="stats-origin-shield">0</div>
+              <div class="stat-sub" id="stats-origin-shield-note">0 of 0 hosts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Admin users</div>
+              <div class="stat-value" id="stats-users-total">0</div>
+              <div class="stat-sub" id="stats-users-note">0 roles assigned</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Stream proxies</div>
+              <div class="stat-value" id="stats-streams-total">0</div>
+              <div class="stat-sub" id="stats-streams-note">0 listening ports</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <h2>Traffic trend</h2>
+              <p style="color:var(--muted); margin-top:6px;">Requests proxied over time based on recent activity.</p>
+            </div>
+            <span class="badge info" id="stats-trend-note">Last 14 days</span>
+          </div>
+          <div class="trend-controls">
+            <div class="trend-range" role="group" aria-label="Traffic trend zoom">
+              <span class="trend-label">Zoom</span>
+              <button class="btn small" data-trend-range="5m">5m</button>
+              <button class="btn small" data-trend-range="10m">10m</button>
+              <button class="btn small" data-trend-range="1h">1h</button>
+              <button class="btn small" data-trend-range="24h">24h</button>
+              <button class="btn small" data-trend-range="7d">7d</button>
+              <button class="btn small" data-trend-range="14d">14d</button>
+              <button class="btn small" data-trend-range="30d">30d</button>
+              <button class="btn small" data-trend-range="all">All</button>
+            </div>
+          </div>
+          <div class="stat-grid" style="margin-top:12px;">
+            <div class="stat-card">
+              <div class="stat-label">Total requests</div>
+              <div class="stat-value" id="stats-traffic-total">0</div>
+              <div class="stat-sub" id="stats-traffic-total-note">Last 14 days</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Latest interval</div>
+              <div class="stat-value" id="stats-traffic-latest">0</div>
+              <div class="stat-sub" id="stats-traffic-latest-note">Most recent interval</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total bandwidth</div>
+              <div class="stat-value" id="stats-traffic-bytes">0</div>
+              <div class="stat-sub" id="stats-traffic-bytes-note">Last 14 days</div>
+            </div>
+          </div>
+          <div class="chart" id="traffic-chart"></div>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h2>Protection adoption</h2>
+            <p style="color:var(--muted); margin-top:6px;">Coverage across proxy hosts for critical safeguards.</p>
+            <div class="bar-list" id="security-bars"></div>
+          </div>
+          <div class="card">
+            <h2>Certificate health</h2>
+            <p style="color:var(--muted); margin-top:6px;">Renewal automation and provider mix.</p>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-label">Total certificates</div>
+                <div class="stat-value" id="stats-certs-total">0</div>
+                <div class="stat-sub" id="stats-certs-note">0 managed automatically</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Auto renewals</div>
+                <div class="stat-value" id="stats-certs-auto">0</div>
+                <div class="stat-sub" id="stats-certs-auto-note">0% coverage</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Let's Encrypt</div>
+                <div class="stat-value" id="stats-certs-le">0</div>
+                <div class="stat-sub" id="stats-certs-le-note">0% of certs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Backend health</h2>
+          <p style="color:var(--muted); margin-top:6px;">Real-time view of backend availability and latency.</p>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total backends</div>
+              <div class="stat-value" id="stats-backends-total">0</div>
+              <div class="stat-sub" id="stats-backends-note">0 reported</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Healthy</div>
+              <div class="stat-value" id="stats-backends-healthy">0</div>
+              <div class="stat-sub" id="stats-backends-healthy-note">0% availability</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Down</div>
+              <div class="stat-value" id="stats-backends-down">0</div>
+              <div class="stat-sub" id="stats-backends-down-note">0 incidents</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg latency</div>
+              <div class="stat-value" id="stats-backends-latency">0ms</div>
+              <div class="stat-sub">Last reported check</div>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="stat-label">Down backends</div>
+            <div id="stats-down-list" class="row" style="gap:8px; margin-top:8px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Help Tab -->
+      <section id="page-defaults" style="display:none">
+        <div class="card">
+          <h2>Option Guide & Defaults</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">Use this guide to understand what each option does, the default state, and what changes when you enable it.</p>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">Default settings and effect summary for proxy hosts.</caption>
+              <thead><tr><th>Option</th><th>Default</th><th>What happens when enabled</th></tr></thead>
+              <tbody>
+                <tr><td>SSL</td><td><span class="badge warning">Off</span></td><td>HTTPS is enabled and traffic is encrypted using the selected certificate.</td></tr>
+                <tr><td>WebSocket Proxying</td><td><span class="badge warning">Off</span></td><td>Upgrade requests are allowed so real-time apps can keep persistent connections.</td></tr>
+                <tr><td>Require Authentication</td><td><span class="badge warning">Off</span></td><td>Users must authenticate before accessing the upstream service.</td></tr>
+                <tr><td>Exploit Protection Headers</td><td><span class="badge info">Balanced</span></td><td>Frame, XSS, content type, and referrer policy headers are applied by default; CSP and HSTS are added in strict templates.</td></tr>
+                <tr><td>WAF Screening</td><td><span class="badge success">On</span></td><td>Requests are inspected against the WAF rules and blocked on matches.</td></tr>
+                <tr><td>WAF Profile</td><td><span class="badge info">Minimal</span></td><td>Selects how aggressively the WAF inspects traffic and blocks patterns.</td></tr>
+                <tr><td>Security Template</td><td><span class="badge info">Balanced</span></td><td>Applies a curated set of security headers optimized for compatibility.</td></tr>
+                <tr><td>Origin Shielding</td><td><span class="badge success">On</span></td><td>Rewrites origin identity headers to reduce upstream fingerprinting.</td></tr>
+                <tr><td>Rate Limit</td><td><span class="badge info">120/min</span></td><td>Caps per-client requests to reduce abuse and sudden bursts.</td></tr>
+                <tr><td>Fail2Ban Logs</td><td><span class="badge warning">Off</span></td><td>Structured block hints are emitted for Fail2Ban ingestion.</td></tr>
+                <tr><td>CrowdSec Hints</td><td><span class="badge warning">Off</span></td><td>CrowdSec bouncers receive extra context for automated decisions.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Security Controls Explained</h2>
+          <div class="row" style="align-items:flex-start;">
+            <div style="flex:1; min-width:240px;">
+              <h3>WAF Profiles</h3>
+              <p style="color:var(--muted); margin:8px 0 12px;">Choose how aggressive the built-in WAF should be when scanning requests.</p>
+              <ul style="padding-left:18px; color:var(--text); line-height:1.6;">
+                <li><strong>Minimal</strong> blocks common SQL injection, XSS, and path traversal patterns.</li>
+                <li><strong>Balanced</strong> adds broader anomaly detection while keeping the minimal matches.</li>
+                <li><strong>Strict</strong> adds bot and request smuggling protections on top of balanced.</li>
+                <li><strong>Custom</strong> lets you toggle individual rule groups for tailored coverage.</li>
+              </ul>
+            </div>
+            <div style="flex:1; min-width:240px;">
+              <h3>Built-in WAF Screening</h3>
+              <p style="color:var(--muted); margin:8px 0 12px;">When enabled, requests are inspected for risky patterns in:</p>
+              <ul style="padding-left:18px; color:var(--text); line-height:1.6;">
+                <li>URL path and query string.</li>
+                <li>Request body (up to 2&nbsp;MB) for non-WebSocket traffic.</li>
+                <li>Blocked requests return <code>403</code> and generate a security log.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="row" style="align-items:flex-start; margin-top:12px;">
+            <div style="flex:1; min-width:240px;">
+              <h3>Fail2Ban-Compatible Logging</h3>
+              <p style="color:var(--muted); margin:8px 0 12px;">Adds structured hint logs whenever a request is blocked (denylist, allowlist, rate limit, WAF). Use these to wire up Fail2Ban filters.</p>
+            </div>
+            <div style="flex:1; min-width:240px;">
+              <h3>CrowdSec Bouncer Hints</h3>
+              <p style="color:var(--muted); margin:8px 0 12px;">Emits CrowdSec-friendly hints for blocked requests so bouncers can react to abusive IPs.</p>
+            </div>
+          </div>
+          <div class="row" style="align-items:flex-start; margin-top:12px;">
+            <div style="flex:1; min-width:240px;">
+              <h3>Origin Shielding Headers</h3>
+              <p style="color:var(--muted); margin:8px 0 12px;">Removes upstream server identity headers (Server, X-Powered-By, X-AspNet-Version, X-AspNetMvc-Version) and replaces them with <code>Server: PuffProxy</code>.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>App Templates</h2>
+          <p style="color:var(--muted); margin-top:6px;">Quick-start profiles for popular apps with sensible defaults.</p>
+          <div id="template-list" style="display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top:16px;"></div>
+        </div>
+      </section>
+
+      <!-- Config Tab -->
+      <section id="page-config" style="display:none">
+        <div class="card">
+          <h2>Configuration as Code</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">Export or import git-friendly configuration in JSON or YAML.</p>
+          <div class="row">
+            <button class="btn" id="config-refresh">Refresh</button>
+            <button class="btn" id="config-copy-json">Copy JSON</button>
+            <button class="btn" id="config-copy-yaml">Copy YAML</button>
+          </div>
+          <div class="split" style="margin-top:16px;">
+            <div>
+              <label for="config-json">JSON</label>
+              <textarea id="config-json" rows="14" spellcheck="false"></textarea>
+            </div>
+            <div>
+              <label for="config-yaml">YAML</label>
+              <textarea id="config-yaml" rows="14" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Import Config</h2>
+          <p style="color:var(--muted);margin-bottom:16px;">YAML import supports JSON-compatible YAML only.</p>
+          <div class="split">
+            <div>
+              <label for="config-import-format">Format</label>
+              <select id="config-import-format">
+                <option value="json">JSON</option>
+                <option value="yaml">YAML</option>
+              </select>
+            </div>
+            <div></div>
+          </div>
+          <label for="config-import">Paste configuration</label>
+          <textarea id="config-import" rows="10" spellcheck="false" placeholder="Paste JSON or YAML configuration here..."></textarea>
+          <div class="row" style="justify-content:flex-end; margin-top:16px;">
+            <button class="btn primary" id="config-import-btn">Import Config</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audit Tab -->
+      <section id="page-audit" style="display:none">
+        <div class="card">
+          <div class="row">
+            <button class="btn" id="audit-refresh">Refresh</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Audit Log</h2>
+          <div id="audit-list" style="display:flex; flex-direction:column; gap:8px; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace; font-size: 0.9rem;"></div>
+        </div>
+      </section>
+
+      <!-- Logs Tab -->
+      <section id="page-logs" style="display:none">
+        <div class="card">
+          <div class="row">
+            <button class="btn" id="logs-refresh">Refresh</button>
+            <button class="btn" id="logs-clear-24h">Delete last 24 hours</button>
+            <button class="btn danger" id="logs-clear-all">Delete all</button>
+            <div class="checkbox-group" style="margin:0;">
+              <input type="checkbox" id="logs-live">
+              <label for="logs-live">Live updates</label>
+            </div>
+            <div style="min-width:140px;">
+              <label for="logs-per-page" style="margin:0 0 6px;">Entries per page</label>
+              <select id="logs-per-page">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div style="min-width:220px;">
+              <label for="log-level" style="margin:0 0 6px;">Log Level</label>
+              <select id="log-level">
+                <option value="debug">Debug</option>
+                <option value="info">Info</option>
+                <option value="warn">Warn</option>
+                <option value="error">Error</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Recent Logs</h2>
+          <div id="logs-list" style="display:flex; flex-direction:column; gap:8px; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace; font-size: 0.9rem;"></div>
+          <div id="logs-pagination" class="row" style="margin-top:16px;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Host Modal -->
+  <div class="modal" id="host-modal" role="dialog" aria-modal="true" aria-labelledby="host-modal-title" aria-hidden="true">
+    <div class="sheet">
+      <div class="row" style="justify-content:space-between; margin-bottom:20px;">
+        <h3 id="host-modal-title">Add Proxy Host</h3>
+        <div class="row" style="margin:0;">
+          <button class="btn primary" type="button">Save Host</button>
+          <button class="btn" type="button" id="host-close" aria-label="Close host modal">Close</button>
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>Basics</h4>
+        <div class="form-grid">
+          <div>
+            <label for="host-domain">Domain <span class="required">*</span></label>
+            <input id="host-domain" placeholder="example.com">
+            <div class="helper">Use a root domain or wildcard to capture subdomains.</div>
+          </div>
+          <div>
+            <label for="host-template">Apply App Template</label>
+            <select id="host-template">
+              <option value="">None</option>
+            </select>
+            <div class="helper">Apply curated defaults for popular services.</div>
+          </div>
+        </div>
+        <label for="host-backends">Backend URLs <span class="required">*</span></label>
+        <textarea id="host-backends" rows="3" placeholder="http://192.168.1.10:8080&#10;http://192.168.1.11:8080"></textarea>
+        <div class="helper">Add one backend per line for load balancing.</div>
+      </div>
+
+      <div class="form-section">
+        <h4>Load Balancing</h4>
+        <div class="form-grid">
+          <div>
+            <label for="host-load-balancing">Strategy</label>
+            <select id="host-load-balancing">
+              <option value="none">None (single backend)</option>
+              <option value="round_robin">Round robin</option>
+              <option value="least_latency">Least latency</option>
+              <option value="random">Random</option>
+              <option value="ip_hash">IP hash (sticky sessions)</option>
+            </select>
+          </div>
+          <div>
+            <label for="host-health-path">Health check path</label>
+            <input id="host-health-path" placeholder="/health">
+            <div class="helper">Overrides the default health probe for this host.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="split-section">
+          <div class="section-block">
+            <h4>TLS</h4>
+            <div class="form-grid">
+              <div>
+                <label for="host-ssl">Enable SSL</label>
+                <select id="host-ssl">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+              <div id="ssl-fields" style="display:none;">
+                <label for="host-cert">Certificate</label>
+                <select id="host-cert">
+                  <option value="">None</option>
+                  <option value="_auto">Let's Encrypt (Auto)</option>
+                </select>
+              </div>
+            </div>
+            <div class="helper">Enable SSL to attach a certificate or auto-issue via Let's Encrypt.</div>
+          </div>
+          <div class="section-block">
+            <h4>WebSockets & Access</h4>
+            <div class="checkbox-group">
+              <input type="checkbox" id="host-websocket">
+              <label for="host-websocket">Enable WebSocket Proxying</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="host-require-auth">
+              <label for="host-require-auth">Require Authentication</label>
+            </div>
+            <div class="helper">Use WebSockets for real-time apps, and auth for protected hosts.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Security Templates</h4>
+        <div class="form-grid">
+          <div>
+            <label for="host-waf-profile">WAF Profile</label>
+            <select id="host-waf-profile">
+              <option value="minimal">Minimal</option>
+              <option value="balanced">Balanced</option>
+              <option value="strict">Strict</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div class="checkbox-group" style="margin:12px 0 0;">
+              <input type="checkbox" id="host-waf-all">
+              <label for="host-waf-all">Scan all common WAF patterns</label>
+            </div>
+            <div id="waf-options" class="waf-grid" style="margin-left:24px;">
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-sql">
+                <label for="host-waf-sql">SQL injection patterns</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-xss">
+                <label for="host-waf-xss">XSS patterns</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-path">
+                <label for="host-waf-path">Path traversal patterns</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-command">
+                <label for="host-waf-command">Command injection patterns</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-protocol">
+                <label for="host-waf-protocol">Protocol anomalies</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-lfi">
+                <label for="host-waf-lfi">Local file inclusion</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-rfi">
+                <label for="host-waf-rfi">Remote file inclusion</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-scanners">
+                <label for="host-waf-scanners">Scanner probes</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-bots">
+                <label for="host-waf-bots">Bad bot signatures</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-waf-smuggling">
+                <label for="host-waf-smuggling">Request smuggling</label>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label for="host-security-template">Security Template</label>
+            <select id="host-security-template">
+              <option value="balanced">Balanced</option>
+              <option value="minimal">Minimal</option>
+              <option value="strict">Strict</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div class="checkbox-group" style="margin:12px 0 0;">
+              <input type="checkbox" id="host-block-all" checked>
+              <label for="host-block-all">Block all common exploit protections</label>
+            </div>
+            <div id="exploit-options" style="margin-left:24px;">
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-frame">
+                <label for="host-block-frame">Frame options</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-xss">
+                <label for="host-block-xss">XSS protection</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-content-type">
+                <label for="host-block-content-type">Content type sniffing</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-csp">
+                <label for="host-block-csp">Content security policy</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-hsts">
+                <label for="host-block-hsts">Strict transport security</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="host-block-referrer">
+                <label for="host-block-referrer">Referrer policy</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Routing & Traffic</h4>
+        <div id="plugin-geo-routing">
+          <label for="host-geo-routing">Geo routing (COUNTRY=backend URL per line)</label>
+          <textarea id="host-geo-routing" rows="3" placeholder="US=https://us-backend:8443&#10;DE=https://eu-backend:8443"></textarea>
+        </div>
+        <div id="plugin-traffic-mirror">
+          <label for="host-mirror-backends">Traffic mirror backends (one per line)</label>
+          <textarea id="host-mirror-backends" rows="3" placeholder="https://canary-backend:8443"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Security Controls</h4>
+        <div class="checkbox-group">
+          <input type="checkbox" id="host-waf">
+          <label for="host-waf">Enable built-in WAF screening</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="host-fail2ban">
+          <label for="host-fail2ban">Enable Fail2Ban-compatible logging</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="host-crowdsec">
+          <label for="host-crowdsec">Enable CrowdSec bouncer hints</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="host-origin-shield">
+          <label for="host-origin-shield">Enable origin shielding headers</label>
+        </div>
+        <label for="host-rate-limit">Rate limit (requests per minute per client IP)</label>
+        <input id="host-rate-limit" type="number" min="0" placeholder="120">
+        <label for="host-allowlist">IP allowlist (one per line or comma-separated)</label>
+        <textarea id="host-allowlist" rows="3" placeholder="192.168.1.0/24&#10;203.0.113.5"></textarea>
+        <label for="host-denylist">IP denylist (one per line or comma-separated)</label>
+        <textarea id="host-denylist" rows="3" placeholder="198.51.100.0/24"></textarea>
+      </div>
+
+      <div class="row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn primary">Save Host</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div class="modal" id="user-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" aria-hidden="true">
+    <div class="sheet" style="width: min(500px, 95%);">
+      <div class="row" style="justify-content:space-between; margin-bottom:20px;">
+      <h3 id="user-modal-title">Add User</h3>
+        <button class="btn" type="button" aria-label="Close user modal">Close</button>
+      </div>
+      <label for="user-username">Username</label>
+      <input id="user-username" placeholder="admin">
+      <label for="user-role">Role</label>
+      <select id="user-role">
+        <option value="admin">Admin</option>
+        <option value="editor">Editor</option>
+        <option value="viewer">Viewer</option>
+      </select>
+      <label for="user-password">Password</label>
+      <input type="password" id="user-password" placeholder="••••••••">
+      <p id="user-password-hint" style="color:var(--muted); margin-top:8px; font-size:0.9rem;">Password is required.</p>
+      <div class="row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn primary" id="user-save">Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cert Modal -->
+  <div class="modal" id="cert-modal" role="dialog" aria-modal="true" aria-labelledby="cert-modal-title" aria-hidden="true">
+    <div class="sheet">
+      <div class="row" style="justify-content:space-between; margin-bottom:20px;">
+        <h3 id="cert-modal-title">Add Certificate</h3>
+        <button class="btn" type="button" aria-label="Close certificate modal">Close</button>
+      </div>
+      <div class="split">
+        <div>
+          <label for="cert-name">Name</label>
+          <input id="cert-name" placeholder="mycert">
+        </div>
+        <div>
+          <label for="cert-type">Type</label>
+          <select id="cert-type">
+            <option value="letsencrypt">Let's Encrypt</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <div id="cert-domain-row" style="margin-top:12px;">
+        <label for="cert-domain">Domain for Let's Encrypt</label>
+        <input id="cert-domain" placeholder="example.com">
+        <div class="helper">Required when auto-generating a Let's Encrypt certificate.</div>
+      </div>
+      <div style="margin-top:12px;">
+        <label class="checkbox-group" style="margin:0;">
+          <input type="checkbox" id="cert-autogenerate" checked> Auto-generate (Let's Encrypt)
+        </label>
+        <label class="checkbox-group" style="margin:8px 0 0;">
+          <input type="checkbox" id="cert-autorenew" checked> Auto-renew
+        </label>
+        <div id="cert-renew-days" style="margin-top:8px; max-width:200px;">
+          <label for="cert-renew-before" style="margin:0 0 6px;">Renew before expiry (days)</label>
+          <input id="cert-renew-before" type="number" min="1" placeholder="7">
+        </div>
+      </div>
+      <div id="cert-upload" style="margin-top:20px; display:none;">
+        <label for="cert-file">Certificate PEM File</label>
+        <input type="file" id="cert-file">
+        <label for="key-file">Private Key PEM File</label>
+        <input type="file" id="key-file">
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn primary">Save Certificate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stream Modal -->
+  <div class="modal" id="stream-modal" role="dialog" aria-modal="true" aria-labelledby="stream-modal-title" aria-hidden="true">
+    <div class="sheet" style="width: min(600px, 95%);">
+      <div class="row" style="justify-content:space-between; margin-bottom:20px;">
+        <h3 id="stream-modal-title">Add Stream Proxy</h3>
+        <button class="btn" type="button" aria-label="Close stream modal">Close</button>
+      </div>
+      <label for="stream-name">Name</label>
+      <input id="stream-name" placeholder="minecraft-tcp">
+      <div class="split">
+        <div>
+          <label for="stream-protocol">Protocol</label>
+          <select id="stream-protocol">
+            <option value="tcp">TCP</option>
+            <option value="udp">UDP</option>
+          </select>
+        </div>
+        <div>
+          <label for="stream-enabled">Enabled</label>
+          <select id="stream-enabled">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+      <label for="stream-listen">Listen Address</label>
+      <input id="stream-listen" placeholder="0.0.0.0:25565">
+      <label for="stream-backend">Backend Address</label>
+      <input id="stream-backend" placeholder="192.168.1.10:25565">
+      <div class="row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn primary" id="stream-save">Save Stream</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+{{end}}
+{{if .IsLogin}}
+<script>
+(function () {
+    const root = document.documentElement;
+    const button = document.getElementById('theme-toggle');
+    const stored = localStorage.getItem('theme');
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    const initial = stored || (prefersLight ? 'light' : 'dark');
+    root.setAttribute('data-theme', initial);
+    button.setAttribute('aria-pressed', initial === 'dark' ? 'true' : 'false');
+    button.textContent = initial === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+
+    button.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        button.setAttribute('aria-pressed', next === 'dark' ? 'true' : 'false');
+        button.textContent = next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    });
+
+    const error = document.getElementById('login-error');
+    if (error && error.textContent.trim()) {
+        error.classList.add('error');
+    }
+})();
+</script>
+{{else}}
+<script>
+    let DATA = { hosts: [], certs: [], users: [], le_hosts: [], stream_proxies: [], plugins: [], settings: {}, templates: [], traffic_trend: [] };
+    let editingHost = null;
+    let editingUser = null;
+    let editingCert = null;
+    let editingStream = null;
+    let hostState = { page: 1, perPage: 20 };
+    let logsState = { entries: [], page: 1, perPage: 20, timer: null };
+
+    const exploitFields = [
+      { id: 'host-block-frame', key: 'frame_options' },
+      { id: 'host-block-xss', key: 'xss_protection' },
+      { id: 'host-block-content-type', key: 'content_type_options' },
+      { id: 'host-block-csp', key: 'content_security_policy' },
+      { id: 'host-block-hsts', key: 'strict_transport_security' },
+      { id: 'host-block-referrer', key: 'referrer_policy' }
+    ];
+    const wafRuleFields = [
+      { id: 'host-waf-sql', key: 'sql-injection' },
+      { id: 'host-waf-xss', key: 'xss' },
+      { id: 'host-waf-path', key: 'path-traversal' },
+      { id: 'host-waf-command', key: 'command-injection' },
+      { id: 'host-waf-protocol', key: 'protocol-anomalies' },
+      { id: 'host-waf-lfi', key: 'local-file-inclusion' },
+      { id: 'host-waf-rfi', key: 'remote-file-inclusion' },
+      { id: 'host-waf-scanners', key: 'scanner-probes' },
+      { id: 'host-waf-bots', key: 'bad-bots' },
+      { id: 'host-waf-smuggling', key: 'request-smuggling' }
+    ];
+
+    const securityTemplates = {
+      minimal: {
+        frame_options: true,
+        xss_protection: true,
+        content_type_options: true,
+        content_security_policy: false,
+        strict_transport_security: false,
+        referrer_policy: false
+      },
+      balanced: {
+        frame_options: true,
+        xss_protection: true,
+        content_type_options: true,
+        content_security_policy: false,
+        strict_transport_security: false,
+        referrer_policy: true
+      },
+      strict: {
+        frame_options: true,
+        xss_protection: true,
+        content_type_options: true,
+        content_security_policy: true,
+        strict_transport_security: true,
+        referrer_policy: true
+      }
+    };
+    const minimalWafRules = {
+      'sql-injection': true,
+      xss: true,
+      'path-traversal': true,
+      'command-injection': true
+    };
+    const wafProfiles = {
+      minimal: minimalWafRules,
+      baseline: minimalWafRules,
+      balanced: {
+        'sql-injection': true,
+        xss: true,
+        'path-traversal': true,
+        'command-injection': true,
+        'protocol-anomalies': true,
+        'local-file-inclusion': true,
+        'remote-file-inclusion': true,
+        'scanner-probes': true
+      },
+      strict: {
+        'sql-injection': true,
+        xss: true,
+        'path-traversal': true,
+        'command-injection': true,
+        'protocol-anomalies': true,
+        'local-file-inclusion': true,
+        'remote-file-inclusion': true,
+        'scanner-probes': true,
+        'bad-bots': true,
+        'request-smuggling': true
+      }
+    };
+    const wafProfileLabels = {
+      minimal: 'Minimal',
+      baseline: 'Minimal',
+      balanced: 'Balanced',
+      strict: 'Strict',
+      custom: 'Custom'
+    };
+    const trendRanges = [
+      { id: '5m', label: '5m', points: 5, note: 'Last 5 minutes' },
+      { id: '10m', label: '10m', points: 10, note: 'Last 10 minutes' },
+      { id: '1h', label: '1h', points: 60, note: 'Last 1 hour' },
+      { id: '24h', label: '24h', points: 24, note: 'Last 24 hours' },
+      { id: '7d', label: '7d', points: 7, note: 'Last 7 days' },
+      { id: '14d', label: '14d', points: 14, note: 'Last 14 days' },
+      { id: '30d', label: '30d', points: 30, note: 'Last 30 days' },
+      { id: 'all', label: 'All', points: 'all', note: 'All time' }
+    ];
+    const trendState = {
+      range: '14d'
+    };
+
+    function csrf() { return document.getElementById('csrf').textContent.trim(); }
+
+    function normalizeWafProfile(profile) {
+      if (!profile) return 'custom';
+      return profile === 'baseline' ? 'minimal' : profile;
+    }
+
+    function wafProfileLabel(profile) {
+      return wafProfileLabels[profile] || profile;
+    }
+
+    function trendRangeConfig(id) {
+      return trendRanges.find(range => range.id === id) || trendRanges[trendRanges.length - 1];
+    }
+
+    function setActiveTrendRange(rangeId) {
+      const buttons = document.querySelectorAll('[data-trend-range]');
+      buttons.forEach(button => {
+        button.classList.toggle('active', button.dataset.trendRange === rangeId);
+      });
+    }
+
+    function sliceTrendData(trend, rangeId) {
+      const range = trendRangeConfig(rangeId);
+      if (!trend.length) {
+        return { range, trendSlice: [], values: [] };
+      }
+      if (range.points === 'all') {
+        return { range, trendSlice: trend, values: trend.map(point => point.count || 0) };
+      }
+      const trendSlice = trend.slice(-range.points);
+      return { range, trendSlice, values: trendSlice.map(point => point.count || 0) };
+    }
+
+    function toast(msg, error = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (error ? ' error' : '');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    function setTab(tab) {
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      document.querySelectorAll('section[id^="page-"]').forEach(s => s.style.display = 'none');
+      document.getElementById(`page-${tab}`).style.display = 'block';
+      const titles = { hosts: 'Proxy Hosts', certs: 'SSL Certificates', users: 'Users', streams: 'Streams', plugins: 'Plugins', stats: 'Statistics', defaults: 'Help', config: 'Config', audit: 'Audit', logs: 'Logs' };
+      document.getElementById('page-title').textContent = titles[tab];
+      const main = document.getElementById('main-content');
+      if (main) {
+        main.scrollTop = 0;
+      }
+      if (tab === 'logs') {
+        loadLogs();
+        handleLiveLogsToggle();
+      } else if (tab === 'audit') {
+        loadAudit();
+        stopLiveLogs();
+      } else if (tab === 'config') {
+        loadConfigExport();
+        stopLiveLogs();
+      } else {
+        stopLiveLogs();
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/admin/api/config');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        DATA = await res.json();
+        renderHosts();
+        renderCerts();
+        renderUsers();
+        renderStreams();
+        renderPlugins();
+        renderStats();
+        renderTemplates();
+        applyPluginVisibility();
+        buildCertSelect();
+        buildTemplateSelect();
+      } catch (e) {
+        toast('Failed to load config: ' + e.message, true);
+      }
+    }
+
+    function badge(healthy, lastError) {
+      if (healthy === true) return '<span class="badge success"><span class="dot success"></span>Healthy</span>';
+      if (healthy === false) return `<span class="badge danger"><span class="dot danger"></span>Down${lastError ? ' – ' + esc(lastError) : ''}</span>`;
+      return '<span class="badge warning"><span class="dot warning"></span>Unknown</span>';
+    }
+
+    function exploitBadge(blocks) {
+      const values = exploitFields.map(f => !!blocks?.[f.key]);
+      const enabled = values.filter(Boolean).length;
+      if (enabled === 0) {
+        return '<span class="badge warning">No</span>';
+      }
+      if (enabled === values.length) {
+        return '<span class="badge success">All</span>';
+      }
+      return '<span class="badge info">Custom</span>';
+    }
+
+    function loadBalancingLabel(strategy) {
+      switch (strategy) {
+        case 'none':
+          return 'None';
+        case 'least_latency':
+          return 'Least latency';
+        case 'random':
+          return 'Random';
+        case 'ip_hash':
+          return 'IP hash';
+        default:
+          return 'Round robin';
+      }
+    }
+
+    function renderHosts() {
+      const q = document.getElementById('host-search').value.toLowerCase();
+      const tbody = document.getElementById('hosts-tbody');
+      const perPage = hostState.perPage;
+      const filtered = DATA.hosts.filter(h => !(q && !h.domain.toLowerCase().includes(q)));
+      const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+      if (hostState.page > totalPages) {
+        hostState.page = totalPages;
+      }
+      const start = (hostState.page - 1) * perPage;
+      const end = start + perPage;
+      let rows = '';
+      for (const h of filtered.slice(start, end)) {
+        const ssl = h.ssl ? (h.auto_cert ? '<span class="badge success">Auto LE</span>' : `<span class="badge success">${esc(h.cert_name || 'Custom')}</span>`) : '<span class="badge warning">No</span>';
+        const auth = h.require_auth ? '<span class="badge success">Yes</span>' : '<span class="badge warning">No</span>';
+        const ws = h.websocket ? '<span class="badge success">Yes</span>' : '<span class="badge warning">No</span>';
+        const exploits = exploitBadge(h.exploit_blocks || {});
+        let backends = '';
+        const lbBadge = `<span class="badge info">LB: ${loadBalancingLabel(h.load_balancing)}</span>`;
+        const healthPathBadge = h.health_check_path ? `<span class="badge info">Health: ${esc(h.health_check_path)}</span>` : '';
+        if (h.backends?.length) {
+          backends += `<div style="margin-bottom:8px;">${lbBadge} ${healthPathBadge}</div>`;
+        }
+        for (const b of h.backends) {
+          const health = h.health?.[b] || {};
+          const status = badge(health.healthy, health.last_error);
+          backends += `<div><code>${esc(b)}</code> ${status} • ${health.latency_ms || 0}ms</div>`;
+        }
+        rows += `<tr>
+          <td><strong>${esc(h.domain)}</strong></td>
+          <td>${ssl}</td>
+          <td>${auth}</td>
+          <td>${ws}</td>
+          <td>${exploits}</td>
+          <td>${securityBadges(h)}</td>
+          <td>${backends || '<em>None</em>'}</td>
+          <td>
+            <button class="btn">Edit</button>
+            <button class="btn danger">Delete</button>
+          </td>
+        </tr>`;
+      }
+      tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center; color:var(--muted);">No hosts configured</td></tr>';
+
+      const pagination = document.getElementById('hosts-pagination');
+      if (filtered.length <= perPage) {
+        pagination.innerHTML = '';
+        return;
+      }
+      let html = '<div style="color:var(--muted); margin-right:12px;">Page</div>';
+      for (let i = 1; i <= totalPages; i++) {
+        const active = i === hostState.page ? ' primary' : '';
+        html += `<button class="btn${active}" data-page="${i}">${i}</button>`;
+      }
+      pagination.innerHTML = html;
+    }
+
+    function securityBadges(host) {
+      const wafEnabled = !!host.waf_enabled;
+      const wafProfile = normalizeWafProfile(host.waf_profile || 'custom');
+      const wafRules = host.waf_rules || {};
+      const totalWafGroups = wafRuleFields.length;
+      const configuredGroups = Object.keys(wafRules).length
+        ? wafRuleFields.filter(f => wafRules[f.key] !== false).length
+        : totalWafGroups;
+      const enabledGroups = wafEnabled ? configuredGroups : 0;
+      const wafDetail = wafEnabled ? wafProfileLabel(wafProfile) : 'Disabled';
+      const template = host.security_template ? esc(host.security_template) : 'custom';
+      const rateLimit = host.rate_limit_per_minute > 0 ? `${host.rate_limit_per_minute}/min` : 'None';
+      const allowCount = host.allowlist?.length || 0;
+      const denyCount = host.denylist?.length || 0;
+      const listDetail = (allowCount || denyCount)
+        ? `Allow ${allowCount || 0} • Deny ${denyCount || 0}`
+        : 'None';
+      const integrationParts = [];
+      if (host.security_integrations?.fail2ban) integrationParts.push('Fail2Ban');
+      if (host.security_integrations?.crowdsec) integrationParts.push('CrowdSec');
+      integrationParts.push(host.origin_shield ? 'Shielded' : 'Exposed');
+      const integrations = integrationParts.join(' • ');
+      return `
+        <div class="security-cell">
+          <div class="security-row">
+            <span class="security-label">WAF</span>
+            <span>${enabledGroups}/${totalWafGroups}</span>
+          </div>
+          <div class="security-row">
+            <span class="security-label">Security</span>
+            <span>${template}</span>
+          </div>
+          <div class="security-row">
+            <span class="security-label">Rate limit</span>
+            <span>${rateLimit}</span>
+          </div>
+          <div class="security-row">
+            <span class="security-label">Lists</span>
+            <span>${listDetail}</span>
+          </div>
+          <div class="security-row">
+            <span class="security-label">Integrations</span>
+            <span>${integrations}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCerts() {
+      const q = document.getElementById('cert-search').value.toLowerCase();
+      const tbody = document.getElementById('certs-tbody');
+      let rows = '';
+      for (const c of DATA.certs) {
+        if (q && !c.name.toLowerCase().includes(q)) continue;
+        const autoGenerate = c.auto_generate ? '<span class="badge success">Auto-generate</span>' : '<span class="badge warning">Manual</span>';
+        const renewLabel = c.auto_renew ? `<span class="badge success">Yes${c.renew_days ? ` (${c.renew_days}d)` : ''}</span>` : '<span class="badge warning">No</span>';
+        let paths = '<em>None</em>';
+        if (c.cert_path || c.key_path) {
+          paths = `<small>Cert: ${esc(c.cert_path || '-')}</small><br><small>Key: ${esc(c.key_path || '-')}</small>`;
+        } else if (c.type === 'letsencrypt' && c.auto_generate) {
+          paths = '<em>Auto LE</em>';
+        }
+        rows += `<tr>
+          <td><strong>${esc(c.name)}</strong></td>
+          <td>${esc(c.type)}${c.type === 'letsencrypt' ? `<div style="margin-top:6px;">${autoGenerate}</div>` : ''}</td>
+          <td>${c.domain ? `<code>${esc(c.domain)}</code>` : '<em>—</em>'}</td>
+          <td>${renewLabel}</td>
+          <td>${paths}</td>
+          <td>
+            <button class="btn" data-action="edit">Upload Renewed</button>
+            <button class="btn danger">Delete</button>
+          </td>
+        </tr>`;
+      }
+      tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center; color:var(--muted);">No certificates</td></tr>';
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('users-tbody');
+      let rows = '';
+      for (const u of DATA.users) {
+        rows += `<tr>
+          <td><strong>${esc(u.username)}</strong></td>
+          <td><span class="badge info">${esc(u.role || 'viewer')}</span></td>
+          <td>
+            <button class="btn">Edit</button>
+            <button class="btn danger">Delete</button>
+          </td>
+        </tr>`;
+      }
+      tbody.innerHTML = rows || '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No users configured</td></tr>';
+    }
+
+    function renderStreams() {
+      const tbody = document.getElementById('streams-tbody');
+      let rows = '';
+      for (const s of DATA.stream_proxies || []) {
+        const enabled = s.enabled ? '<span class="badge success">Enabled</span>' : '<span class="badge warning">Disabled</span>';
+        rows += `<tr>
+          <td><strong>${esc(s.name)}</strong></td>
+          <td>${esc((s.protocol || '').toUpperCase())}</td>
+          <td><code>${esc(s.listen)}</code></td>
+          <td><code>${esc(s.backend)}</code></td>
+          <td>${enabled}</td>
+          <td>
+            <button class="btn">Edit</button>
+            <button class="btn danger">Delete</button>
+          </td>
+        </tr>`;
+      }
+      tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center; color:var(--muted);">No stream proxies configured</td></tr>';
+    }
+
+    function renderPlugins() {
+      const list = document.getElementById('plugins-list');
+      if (!DATA.plugins?.length) {
+        list.innerHTML = '<em style="color:var(--muted);">No plugins available</em>';
+        return;
+      }
+      list.innerHTML = DATA.plugins.map(p => `
+        <div class="card" style="margin:0; padding:16px;">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <strong>${esc(p.name)}</strong>
+              <div style="color:var(--muted); margin-top:6px;">${esc(p.description || '')}</div>
+              <small style="color:var(--muted);">v${esc(p.version || '')}</small>
+            </div>
+            <label class="checkbox-group">
+              <input type="checkbox" data-plugin="${esc(p.name)}" ${p.enabled ? 'checked' : ''}>
+              <span>${p.enabled ? 'Enabled' : 'Disabled'}</span>
+            </label>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderTemplates() {
+      const templates = document.getElementById('template-list');
+      if (!templates) return;
+      if (DATA.templates?.length) {
+        templates.innerHTML = DATA.templates.map(t => `
+          <div class="card" style="margin:0; padding:16px;">
+            <strong>${esc(t.name)}</strong>
+            <p style="color:var(--muted); margin-top:6px;">${esc(t.description || '')}</p>
+          </div>
+        `).join('');
+      } else {
+        templates.innerHTML = '<em style="color:var(--muted);">No templates available</em>';
+      }
+    }
+
+    function isPluginEnabled(name) {
+      const plugin = (DATA.plugins || []).find(p => p.name === name);
+      return !!plugin?.enabled;
+    }
+
+    function applyPluginVisibility() {
+      const geoBlock = document.getElementById('plugin-geo-routing');
+      if (geoBlock) {
+        geoBlock.style.display = isPluginEnabled('geo-routing') ? 'block' : 'none';
+      }
+      const mirrorBlock = document.getElementById('plugin-traffic-mirror');
+      if (mirrorBlock) {
+        mirrorBlock.style.display = isPluginEnabled('traffic-mirror') ? 'block' : 'none';
+      }
+      const streamTab = document.getElementById('tab-streams');
+      const streamPage = document.getElementById('page-streams');
+      const streamEnabled = isPluginEnabled('stream-proxy');
+      if (streamTab) {
+        streamTab.style.display = streamEnabled ? 'block' : 'none';
+      }
+      if (!streamEnabled && streamPage && streamPage.style.display !== 'none') {
+        setTab('hosts');
+      }
+    }
+
+    function renderStats() {
+      const hosts = DATA.hosts || [];
+      const hostCount = hosts.length;
+      const sslCount = hosts.filter(h => h.ssl).length;
+      const wafCount = hosts.filter(h => h.waf_enabled).length;
+      const rateLimited = hosts.filter(h => (h.rate_limit_per_minute || 0) > 0).length;
+      const authRequired = hosts.filter(h => h.require_auth).length;
+      const shielded = hosts.filter(h => h.origin_shield).length;
+      const plugins = DATA.plugins || [];
+      const pluginsEnabled = plugins.filter(p => p.enabled).length;
+      const streamCount = DATA.stream_proxies?.length || 0;
+      const userCount = DATA.users?.length || 0;
+      const certs = DATA.certs || [];
+      const certAuto = certs.filter(c => c.auto_renew).length;
+      const certLE = certs.filter(c => c.type === 'letsencrypt').length;
+
+      const totalBackends = [];
+      const latencySamples = [];
+      const downBackends = [];
+      let healthyCount = 0;
+      let downCount = 0;
+      for (const h of hosts) {
+        for (const backend of h.backends || []) {
+          totalBackends.push(backend);
+          const health = h.health?.[backend];
+          if (health?.healthy === true) {
+            healthyCount += 1;
+          } else if (health?.healthy === false) {
+            downCount += 1;
+            downBackends.push(backend);
+          }
+          if (health?.latency_ms) {
+            latencySamples.push(health.latency_ms);
+          }
+        }
+      }
+
+      const avgLatency = latencySamples.length
+        ? Math.round(latencySamples.reduce((a, b) => a + b, 0) / latencySamples.length)
+        : 0;
+
+      const pct = (value, total) => total ? Math.round((value / total) * 100) : 0;
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      setText('stats-hosts-total', hostCount);
+      setText('stats-hosts-note', `${sslCount} with SSL`);
+      setText('stats-ssl-coverage', `${pct(sslCount, hostCount)}%`);
+      setText('stats-ssl-note', `${certs.length} certificates`);
+      setText('stats-waf-coverage', `${pct(wafCount, hostCount)}%`);
+      setText('stats-waf-note', `${wafCount} of ${hostCount} hosts`);
+      setText('stats-plugins-enabled', `${pluginsEnabled}`);
+      setText('stats-plugins-note', `${plugins.length} available`);
+      setText('stats-rate-limit', rateLimited);
+      setText('stats-rate-limit-note', `${rateLimited} of ${hostCount} hosts`);
+      setText('stats-auth-required', authRequired);
+      setText('stats-auth-required-note', `${authRequired} of ${hostCount} hosts`);
+      setText('stats-origin-shield', shielded);
+      setText('stats-origin-shield-note', `${shielded} of ${hostCount} hosts`);
+      setText('stats-users-total', userCount);
+      setText('stats-users-note', `${DATA.users?.length || 0} roles assigned`);
+      setText('stats-streams-total', streamCount);
+      setText('stats-streams-note', `${streamCount} listening ports`);
+      setText('stats-certs-total', certs.length);
+      setText('stats-certs-note', `${certAuto} managed automatically`);
+      setText('stats-certs-auto', certAuto);
+      setText('stats-certs-auto-note', `${pct(certAuto, certs.length)}% coverage`);
+      setText('stats-certs-le', certLE);
+      setText('stats-certs-le-note', `${pct(certLE, certs.length)}% of certs`);
+      setText('stats-backends-total', totalBackends.length);
+      setText('stats-backends-note', `${totalBackends.length} reported`);
+      setText('stats-backends-healthy', healthyCount);
+      setText('stats-backends-healthy-note', `${pct(healthyCount, totalBackends.length)}% availability`);
+      setText('stats-backends-down', downCount);
+      setText('stats-backends-down-note', `${downCount} incidents`);
+      setText('stats-backends-latency', `${avgLatency}ms`);
+
+      const downList = document.getElementById('stats-down-list');
+      if (downList) {
+        downList.innerHTML = downBackends.length
+          ? downBackends.map(b => `<span class="badge danger"><code>${esc(b)}</code></span>`).join('')
+          : '<em style="color:var(--muted);">None</em>';
+      }
+
+      const bars = [
+        { label: 'SSL enabled', value: sslCount, total: hostCount },
+        { label: 'WAF enabled', value: wafCount, total: hostCount },
+        { label: 'Rate limits', value: rateLimited, total: hostCount },
+        { label: 'Auth required', value: authRequired, total: hostCount },
+        { label: 'Origin shield', value: shielded, total: hostCount }
+      ];
+
+      const barContainer = document.getElementById('security-bars');
+      if (barContainer) {
+        barContainer.innerHTML = bars.map(bar => {
+          const percent = pct(bar.value, bar.total);
+          return `
+            <div class="bar-row">
+              <div class="bar-label">${esc(bar.label)}</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${percent}%;"></div>
+              </div>
+              <div class="bar-value">${bar.value}/${bar.total || 0}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const trend = Array.isArray(DATA.traffic_trend) ? DATA.traffic_trend : [];
+      const { range, trendSlice, values } = sliceTrendData(trend, trendState.range);
+      const totalTraffic = values.reduce((acc, value) => acc + value, 0);
+      const totalBytes = trendSlice.reduce((acc, point) => acc + (point.bytes || 0), 0);
+      const latestTraffic = values.length ? values[values.length - 1] : 0;
+      const trendNote = values.length ? range.note : 'No data yet';
+      setText('stats-trend-note', trendNote);
+      setText('stats-traffic-total', totalTraffic);
+      setText('stats-traffic-total-note', trendNote);
+      setText('stats-traffic-latest', latestTraffic);
+      setText('stats-traffic-bytes', formatBytes(totalBytes));
+      setText('stats-traffic-bytes-note', trendNote);
+      renderTrendChart(values);
+    }
+
+    function renderTrendChart(values) {
+      const container = document.getElementById('traffic-chart');
+      if (!container) return;
+      if (!values.length) {
+        container.innerHTML = '<div style="color:var(--muted);">No traffic data yet.</div>';
+        return;
+      }
+      const width = 100;
+      const height = 50;
+      const labelOffset = 10;
+      const chartHeight = height - labelOffset;
+      const padding = 6;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const spread = max - min || 1;
+      const denom = Math.max(1, values.length - 1);
+      const points = values.map((value, idx) => {
+        const x = padding + (width - padding * 2) * (idx / denom);
+        const y = chartHeight - padding - ((value - min) / spread) * (chartHeight - padding * 2);
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      });
+      const area = `M${points[0]} L${points.join(' L ')} L${width - padding},${chartHeight - padding} L${padding},${chartHeight - padding} Z`;
+      container.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Traffic trend chart">
+          <defs>
+            <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"></stop>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.05"></stop>
+            </linearGradient>
+          </defs>
+          <rect x="0.5" y="0.5" width="${width - 1}" height="${chartHeight - 1}" rx="4" ry="4" fill="none" stroke="var(--border)" stroke-dasharray="2 3"></rect>
+          <path d="${area}" fill="url(#trendFill)"></path>
+          <polyline points="${points.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.8"></polyline>
+          <text x="${width / 2}" y="${height - 2}" text-anchor="middle" fill="var(--muted)" font-size="4">Time</text>
+          <text x="4" y="${chartHeight / 2}" text-anchor="middle" fill="var(--muted)" font-size="4" transform="rotate(-90 4 ${chartHeight / 2})">Requests</text>
+        </svg>
+      `;
+    }
+
+    function logBadgeClass(level) {
+      switch ((level || '').toLowerCase()) {
+        case 'error':
+          return 'danger';
+        case 'warn':
+        case 'warning':
+          return 'warning';
+        case 'debug':
+          return 'debug';
+        default:
+          return 'info';
+      }
+    }
+
+    function renderLogs(logs) {
+      const el = document.getElementById('logs-list');
+      if (!logs || logs.length === 0) {
+        el.innerHTML = '<em style="color:var(--muted);">No logs yet</em>';
+        return;
+      }
+      el.innerHTML = logs.map(log => {
+        const rawLevel = log.level || 'info';
+        const level = esc(rawLevel);
+        const message = esc(log.message || log.raw || '');
+        const time = esc(log.time || '');
+        return `<div><span class="badge ${logBadgeClass(rawLevel)}">${level.toUpperCase()}</span> <small style="color:var(--muted);">${time}</small> ${message}</div>`;
+      }).join('');
+    }
+
+    function renderLogsPagination() {
+      const perPage = logsState.perPage;
+      const totalEntries = logsState.entries.length;
+      const totalPages = Math.max(1, Math.ceil(totalEntries / perPage));
+      if (logsState.page > totalPages) {
+        logsState.page = totalPages;
+      }
+      const start = (logsState.page - 1) * perPage;
+      const end = start + perPage;
+      renderLogs(logsState.entries.slice(start, end));
+
+      const pagination = document.getElementById('logs-pagination');
+      if (totalEntries <= perPage) {
+        pagination.innerHTML = '';
+        return;
+      }
+      let html = '<div style="color:var(--muted); margin-right:12px;">Page</div>';
+      for (let i = 1; i <= totalPages; i++) {
+        const active = i === logsState.page ? ' primary' : '';
+        html += `<button class="btn${active}" data-page="${i}">${i}</button>`;
+      }
+      pagination.innerHTML = html;
+    }
+
+    async function loadLogs() {
+      try {
+        const res = await fetch('/admin/api/logs');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        const levelSel = document.getElementById('log-level');
+        if (payload.level && levelSel.value !== payload.level) {
+          levelSel.value = payload.level;
+        }
+        logsState.entries = payload.logs || [];
+        renderLogsPagination();
+      } catch (e) {
+        toast('Failed to load logs: ' + e.message, true);
+      }
+    }
+
+    async function updateLogLevel() {
+      const level = document.getElementById('log-level').value;
+      const res = await fetch('/admin/api/logs/level', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ level })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Log level updated' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) {
+        loadLogs();
+      }
+    }
+
+    function buildCertSelect() {
+      const sel = document.getElementById('host-cert');
+      sel.innerHTML = '<option value="">None</option><option value="_auto">Let\'s Encrypt (Auto)</option>' +
+        DATA.certs.map(c => {
+          const parts = [esc(c.type)];
+          if (c.type === 'letsencrypt') {
+            parts.push(c.auto_generate ? 'auto-gen' : 'manual');
+            if (c.auto_renew) {
+              parts.push(`renew${c.renew_days ? ` ${c.renew_days}d` : ''}`);
+            }
+          }
+          return `<option value="${esc(c.name)}">${esc(c.name)} (${parts.join(', ')})</option>`;
+        }).join('');
+    }
+
+    function buildTemplateSelect() {
+      const sel = document.getElementById('host-template');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">None</option>' + (DATA.templates || []).map(t => {
+        return `<option value="${esc(t.id)}">${esc(t.name)}</option>`;
+      }).join('');
+    }
+
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function splitList(value) {
+      return (value || '')
+        .split(/[\n,]+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+    }
+    function joinList(items) {
+      return (items || []).join('\n');
+    }
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let value = bytes;
+      let idx = 0;
+      while (value >= 1024 && idx < units.length - 1) {
+        value /= 1024;
+        idx += 1;
+      }
+      const precision = value >= 10 || idx === 0 ? 0 : 1;
+      return `${value.toFixed(precision)} ${units[idx]}`;
+    }
+    function formatGeoRouting(rules) {
+      if (!rules) return '';
+      return Object.entries(rules).map(([k, v]) => `${k}=${v}`).join('\n');
+    }
+    function parseGeoRouting(value) {
+      const out = {};
+      splitList(value).forEach(line => {
+        const parts = line.split('=');
+        if (parts.length < 2) return;
+        const key = parts[0].trim().toUpperCase();
+        const backend = parts.slice(1).join('=').trim();
+        if (key && backend) {
+          out[key] = backend;
+        }
+      });
+      return out;
+    }
+
+    function getExploitBlocks() {
+      const blocks = {};
+      exploitFields.forEach(f => {
+        blocks[f.key] = document.getElementById(f.id).checked;
+      });
+      return blocks;
+    }
+
+    function getWafRules() {
+      const rules = {};
+      wafRuleFields.forEach(f => {
+        rules[f.key] = document.getElementById(f.id).checked;
+      });
+      return rules;
+    }
+
+    function applyWafRules(rules) {
+      const hasRules = rules && Object.keys(rules).length > 0;
+      wafRuleFields.forEach(f => {
+        const checked = hasRules
+          ? (Object.prototype.hasOwnProperty.call(rules, f.key) ? !!rules[f.key] : true)
+          : true;
+        document.getElementById(f.id).checked = checked;
+      });
+      const all = wafRuleFields.every(f => document.getElementById(f.id).checked);
+      const allToggle = document.getElementById('host-waf-all');
+      allToggle.checked = hasRules ? all : false;
+      updateWafRulesDisabled(allToggle.checked);
+    }
+
+    function buildWafRuleSet(profile) {
+      const selected = wafProfiles[normalizeWafProfile(profile)];
+      if (!selected) return null;
+      const rules = {};
+      wafRuleFields.forEach(f => {
+        rules[f.key] = !!selected[f.key];
+      });
+      return rules;
+    }
+
+    function applyWafProfile(profile) {
+      const rules = buildWafRuleSet(profile);
+      if (!rules) return;
+      applyWafRules(rules);
+    }
+
+    function updateWafRulesDisabled(scanAll) {
+      wafRuleFields.forEach(f => {
+        document.getElementById(f.id).disabled = scanAll;
+        if (scanAll) {
+          document.getElementById(f.id).checked = true;
+        }
+      });
+      document.getElementById('waf-options').style.opacity = scanAll ? '0.6' : '1';
+    }
+
+    function applySecurityTemplate(template) {
+      const selected = securityTemplates[template];
+      if (!selected) return;
+      applyExploitBlocks(selected);
+    }
+
+    function applyTemplateDefaults(templateId) {
+      if (!templateId) return;
+      const tmpl = (DATA.templates || []).find(t => t.id === templateId);
+      if (!tmpl || !tmpl.defaults) return;
+      const d = tmpl.defaults;
+      if (typeof d.websocket === 'boolean') {
+        document.getElementById('host-websocket').checked = d.websocket;
+      }
+      if (typeof d.require_auth === 'boolean') {
+        document.getElementById('host-require-auth').checked = d.require_auth;
+      }
+      if (typeof d.waf_enabled === 'boolean') {
+        document.getElementById('host-waf').checked = d.waf_enabled;
+      }
+      if (d.waf_profile) {
+        const normalized = normalizeWafProfile(d.waf_profile);
+        document.getElementById('host-waf-profile').value = normalized;
+        if (normalized !== 'custom') {
+          applyWafProfile(normalized);
+        }
+      }
+      if (d.waf_rules) {
+        applyWafRules(d.waf_rules);
+      }
+      if (d.security_template) {
+        document.getElementById('host-security-template').value = d.security_template;
+        applySecurityTemplate(d.security_template);
+      }
+      if (d.security_integrations) {
+        document.getElementById('host-fail2ban').checked = !!d.security_integrations.fail2ban;
+        document.getElementById('host-crowdsec').checked = !!d.security_integrations.crowdsec;
+      }
+      if (typeof d.rate_limit_per_minute === 'number') {
+        document.getElementById('host-rate-limit').value = d.rate_limit_per_minute;
+      }
+      if (typeof d.origin_shield === 'boolean') {
+        document.getElementById('host-origin-shield').checked = d.origin_shield;
+      }
+      if (Array.isArray(d.mirror_backends)) {
+        document.getElementById('host-mirror-backends').value = joinList(d.mirror_backends);
+      }
+      if (d.geo_routing) {
+        document.getElementById('host-geo-routing').value = formatGeoRouting(d.geo_routing);
+      }
+    }
+
+    function applyExploitBlocks(blocks) {
+      exploitFields.forEach(f => {
+        document.getElementById(f.id).checked = !!blocks?.[f.key];
+      });
+      const all = exploitFields.every(f => document.getElementById(f.id).checked);
+      const allToggle = document.getElementById('host-block-all');
+      allToggle.checked = all;
+      updateExploitBlocksDisabled(all);
+    }
+
+    function updateExploitBlocksDisabled(blockAll) {
+      exploitFields.forEach(f => {
+        document.getElementById(f.id).disabled = blockAll;
+        if (blockAll) {
+          document.getElementById(f.id).checked = true;
+        }
+      });
+      document.getElementById('exploit-options').style.opacity = blockAll ? '0.6' : '1';
+    }
+
+    function resetHostModalView() {
+      const modal = document.getElementById('host-modal');
+      const sheet = modal.querySelector('.sheet');
+      if (sheet) {
+        sheet.scrollTop = 0;
+      }
+    }
+
+    // Host Modal
+    function openHostModal() {
+      editingHost = null;
+      document.getElementById('host-modal-title').textContent = 'Add Proxy Host';
+      document.getElementById('host-domain').value = '';
+      document.getElementById('host-ssl').value = 'false';
+      document.getElementById('host-backends').value = '';
+      document.getElementById('host-template').value = '';
+      document.getElementById('host-cert').value = '';
+      document.getElementById('host-websocket').checked = false;
+      document.getElementById('host-require-auth').checked = false;
+      applySecurityTemplate('balanced');
+      document.getElementById('host-waf').checked = true;
+      document.getElementById('host-waf-profile').value = 'minimal';
+      applyWafProfile('minimal');
+      document.getElementById('host-security-template').value = 'balanced';
+      document.getElementById('host-load-balancing').value = 'round_robin';
+      document.getElementById('host-health-path').value = '';
+      document.getElementById('host-origin-shield').checked = true;
+      document.getElementById('host-rate-limit').value = '120';
+      document.getElementById('host-allowlist').value = '';
+      document.getElementById('host-denylist').value = '';
+      document.getElementById('host-geo-routing').value = '';
+      document.getElementById('host-mirror-backends').value = '';
+      document.getElementById('host-fail2ban').checked = false;
+      document.getElementById('host-crowdsec').checked = false;
+      toggleSSLFields();
+      const modal = document.getElementById('host-modal');
+      resetHostModalView();
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeHostModal() {
+      const modal = document.getElementById('host-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function toggleSSLFields() {
+      document.getElementById('ssl-fields').style.display = document.getElementById('host-ssl').value === 'true' ? 'block' : 'none';
+    }
+
+    function editHost(domain) {
+      const h = DATA.hosts.find(x => x.domain === domain);
+      if (!h) return;
+      editingHost = domain;
+      document.getElementById('host-modal-title').textContent = 'Edit Proxy Host';
+      document.getElementById('host-domain').value = h.domain;
+      document.getElementById('host-ssl').value = h.ssl ? 'true' : 'false';
+      document.getElementById('host-backends').value = joinList(h.backends);
+      document.getElementById('host-template').value = '';
+      document.getElementById('host-cert').value = h.auto_cert ? '_auto' : (h.cert_name || '');
+      document.getElementById('host-websocket').checked = h.websocket;
+      document.getElementById('host-require-auth').checked = h.require_auth;
+      applyExploitBlocks(h.exploit_blocks || {});
+      document.getElementById('host-waf').checked = !!h.waf_enabled;
+      const selectedWafProfile = normalizeWafProfile(h.waf_profile || 'minimal');
+      document.getElementById('host-waf-profile').value = selectedWafProfile;
+      if (h.waf_rules && Object.keys(h.waf_rules).length) {
+        applyWafRules(h.waf_rules);
+      } else if (selectedWafProfile !== 'custom') {
+        applyWafProfile(selectedWafProfile);
+      } else {
+        applyWafRules({});
+      }
+      document.getElementById('host-security-template').value = h.security_template || 'custom';
+      document.getElementById('host-load-balancing').value = h.load_balancing || 'round_robin';
+      document.getElementById('host-health-path').value = h.health_check_path || '';
+      document.getElementById('host-origin-shield').checked = !!h.origin_shield;
+      document.getElementById('host-rate-limit').value = h.rate_limit_per_minute || '';
+      document.getElementById('host-allowlist').value = joinList(h.allowlist);
+      document.getElementById('host-denylist').value = joinList(h.denylist);
+      document.getElementById('host-geo-routing').value = formatGeoRouting(h.geo_routing || {});
+      document.getElementById('host-mirror-backends').value = joinList(h.mirror_backends);
+      document.getElementById('host-fail2ban').checked = !!h.security_integrations?.fail2ban;
+      document.getElementById('host-crowdsec').checked = !!h.security_integrations?.crowdsec;
+      toggleSSLFields();
+      const modal = document.getElementById('host-modal');
+      resetHostModalView();
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    async function saveHost() {
+      const domain = document.getElementById('host-domain').value.trim();
+      const ssl = document.getElementById('host-ssl').value === 'true';
+      const backends = splitList(document.getElementById('host-backends').value);
+      const certName = ssl ? document.getElementById('host-cert').value : '';
+      const websocket = document.getElementById('host-websocket').checked;
+      const requireAuth = document.getElementById('host-require-auth').checked;
+      const exploitBlocks = getExploitBlocks();
+      const wafEnabled = document.getElementById('host-waf').checked;
+      const wafProfile = document.getElementById('host-waf-profile').value;
+      const wafRules = getWafRules();
+      const securityTemplate = document.getElementById('host-security-template').value;
+      const loadBalancing = document.getElementById('host-load-balancing').value;
+      const healthCheckPath = document.getElementById('host-health-path').value.trim();
+      const securityIntegrations = {
+        fail2ban: document.getElementById('host-fail2ban').checked,
+        crowdsec: document.getElementById('host-crowdsec').checked
+      };
+      const originShield = document.getElementById('host-origin-shield').checked;
+      const rateLimitValue = parseInt(document.getElementById('host-rate-limit').value, 10);
+      const rateLimit = Number.isFinite(rateLimitValue) && rateLimitValue > 0 ? rateLimitValue : 0;
+      const allowlist = splitList(document.getElementById('host-allowlist').value);
+      const denylist = splitList(document.getElementById('host-denylist').value);
+      const geoRouting = parseGeoRouting(document.getElementById('host-geo-routing').value);
+      const mirrorBackends = splitList(document.getElementById('host-mirror-backends').value);
+
+      if (!domain || backends.length === 0) return toast('Domain and at least one backend required', true);
+
+      const payload = {
+        domain,
+        backends,
+        geo_routing: geoRouting,
+        mirror_backends: mirrorBackends,
+        ssl,
+        cert_name: certName === '_auto' ? '_auto' : certName || '',
+        websocket,
+        require_auth: requireAuth,
+        exploit_blocks: exploitBlocks,
+        load_balancing: loadBalancing,
+        health_check_path: healthCheckPath,
+        security_template: securityTemplate,
+        security_integrations: securityIntegrations,
+        waf_enabled: wafEnabled,
+        waf_profile: wafProfile,
+        waf_rules: wafRules,
+        origin_shield: originShield,
+        rate_limit_per_minute: rateLimit,
+        allowlist,
+        denylist
+      };
+
+      const res = await fetch('/admin/api/host/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify(payload)
+      });
+      const bodyText = await res.text();
+      let j = null;
+      try {
+        j = JSON.parse(bodyText);
+      } catch (e) {
+        j = { ok: false, error: bodyText || `HTTP ${res.status}` };
+      }
+      const ok = res.ok && j && j.ok;
+      toast(ok ? 'Host saved!' : ((j && j.error) || 'Failed'), !ok);
+      if (ok) { closeHostModal(); refresh(); }
+    }
+
+    async function deleteHost(domain) {
+      if (!confirm(`Delete ${domain}?`)) return;
+      const res = await fetch('/admin/api/host/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ domain })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Host deleted' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) refresh();
+    }
+
+    // User Modal
+    function openUserModal() {
+      editingUser = null;
+      document.getElementById('user-modal-title').textContent = 'Add User';
+      document.getElementById('user-username').value = '';
+      document.getElementById('user-role').value = 'viewer';
+      document.getElementById('user-password').value = '';
+      document.getElementById('user-password-hint').textContent = 'Password is required.';
+      document.getElementById('user-save').textContent = 'Save User';
+      const modal = document.getElementById('user-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function editUser(username) {
+      const user = DATA.users.find(u => u.username === username);
+      if (!user) return;
+      editingUser = username;
+      document.getElementById('user-modal-title').textContent = 'Edit User';
+      document.getElementById('user-username').value = username;
+      document.getElementById('user-role').value = user.role || 'viewer';
+      document.getElementById('user-password').value = '';
+      document.getElementById('user-password-hint').textContent = 'Leave blank to keep the current password.';
+      document.getElementById('user-save').textContent = 'Save Changes';
+      document.getElementById('user-modal').classList.add('open');
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('user-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function saveUser() {
+      const username = document.getElementById('user-username').value.trim();
+      const password = document.getElementById('user-password').value;
+      const role = document.getElementById('user-role').value;
+      if (!username) return toast('Username required', true);
+      if (!editingUser && !password) return toast('Password required', true);
+      if (editingUser) {
+        const res = await fetch('/admin/api/user/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+          body: JSON.stringify({ previous: editingUser, username, password, role })
+        });
+        const j = await res.json();
+        toast(j.ok ? 'User updated!' : (j.error || 'Failed'), !j.ok);
+        if (j.ok) { closeUserModal(); refresh(); }
+        return;
+      }
+      const res = await fetch('/admin/api/user/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ username, password, role })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'User saved!' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) { closeUserModal(); refresh(); }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`Delete user "${username}"?`)) return;
+      const res = await fetch('/admin/api/user/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ username })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'User deleted' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) refresh();
+    }
+
+    // Stream Modal
+    function openStreamModal() {
+      editingStream = null;
+      document.getElementById('stream-modal-title').textContent = 'Add Stream Proxy';
+      document.getElementById('stream-name').value = '';
+      document.getElementById('stream-protocol').value = 'tcp';
+      document.getElementById('stream-enabled').value = 'true';
+      document.getElementById('stream-listen').value = '';
+      document.getElementById('stream-backend').value = '';
+      const modal = document.getElementById('stream-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function editStream(name) {
+      const s = DATA.stream_proxies.find(x => x.name === name);
+      if (!s) return;
+      editingStream = name;
+      document.getElementById('stream-modal-title').textContent = 'Edit Stream Proxy';
+      document.getElementById('stream-name').value = s.name;
+      document.getElementById('stream-protocol').value = s.protocol || 'tcp';
+      document.getElementById('stream-enabled').value = s.enabled ? 'true' : 'false';
+      document.getElementById('stream-listen').value = s.listen || '';
+      document.getElementById('stream-backend').value = s.backend || '';
+      const modal = document.getElementById('stream-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeStreamModal() {
+      const modal = document.getElementById('stream-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function saveStream() {
+      const name = document.getElementById('stream-name').value.trim();
+      const protocol = document.getElementById('stream-protocol').value;
+      const enabled = document.getElementById('stream-enabled').value === 'true';
+      const listen = document.getElementById('stream-listen').value.trim();
+      const backend = document.getElementById('stream-backend').value.trim();
+      if (!name || !listen || !backend) return toast('Name, listen, and backend required', true);
+      const res = await fetch('/admin/api/stream/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ name, protocol, enabled, listen, backend })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Stream saved!' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) { closeStreamModal(); refresh(); }
+    }
+
+    async function deleteStream(name) {
+      if (!confirm(`Delete stream "${name}"?`)) return;
+      const res = await fetch('/admin/api/stream/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ name })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Stream deleted' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) refresh();
+    }
+
+    // Cert Modal
+    function openCertModal() {
+      editingCert = null;
+      document.getElementById('cert-modal-title').textContent = 'Add Certificate';
+      document.getElementById('cert-name').value = '';
+      document.getElementById('cert-name').disabled = false;
+      document.getElementById('cert-type').value = 'letsencrypt';
+      document.getElementById('cert-autogenerate').checked = true;
+      document.getElementById('cert-autogenerate').disabled = false;
+      document.getElementById('cert-autorenew').checked = true;
+      document.getElementById('cert-autorenew').disabled = false;
+      document.getElementById('cert-domain').value = '';
+      document.getElementById('cert-renew-before').value = '7';
+      document.getElementById('cert-file').value = '';
+      document.getElementById('key-file').value = '';
+      toggleCertFields();
+      const modal = document.getElementById('cert-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeCertModal() {
+      const modal = document.getElementById('cert-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function toggleCertFields() {
+      const type = document.getElementById('cert-type').value;
+      const autoGenerateToggle = document.getElementById('cert-autogenerate');
+      const autoRenew = document.getElementById('cert-autorenew');
+      const domainRow = document.getElementById('cert-domain-row');
+      if (type === 'custom') {
+        autoGenerateToggle.checked = false;
+        autoGenerateToggle.disabled = true;
+        autoRenew.checked = false;
+        autoRenew.disabled = true;
+      } else if (type === 'letsencrypt') {
+        autoGenerateToggle.checked = true;
+        autoGenerateToggle.disabled = true;
+        autoRenew.disabled = false;
+      } else {
+        autoGenerateToggle.disabled = false;
+        autoRenew.disabled = false;
+      }
+      domainRow.style.display = type === 'letsencrypt' && autoGenerateToggle.checked ? 'block' : 'none';
+      document.getElementById('cert-upload').style.display = autoGenerateToggle.checked ? 'none' : 'block';
+      document.getElementById('cert-renew-days').style.display = autoRenew.checked ? 'block' : 'none';
+    }
+
+    function editCert(name) {
+      const c = DATA.certs.find(x => x.name === name);
+      if (!c) return;
+      editingCert = name;
+      document.getElementById('cert-modal-title').textContent = 'Update Certificate';
+      document.getElementById('cert-name').value = c.name;
+      document.getElementById('cert-name').disabled = true;
+      document.getElementById('cert-type').value = c.type || 'custom';
+      document.getElementById('cert-autogenerate').checked = !!c.auto_generate;
+      document.getElementById('cert-autorenew').checked = !!c.auto_renew;
+      document.getElementById('cert-domain').value = c.domain || '';
+      document.getElementById('cert-renew-before').value = c.auto_renew ? String(c.renew_days || 7) : '';
+      document.getElementById('cert-file').value = '';
+      document.getElementById('key-file').value = '';
+      toggleCertFields();
+      const modal = document.getElementById('cert-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    async function saveCert() {
+      const name = document.getElementById('cert-name').value.trim();
+      const type = document.getElementById('cert-type').value;
+      const auto_generate = type === 'letsencrypt' ? true : document.getElementById('cert-autogenerate').checked;
+      const auto_renew = document.getElementById('cert-autorenew').checked;
+      const renewRaw = document.getElementById('cert-renew-before').value.trim();
+      const renewParsed = parseInt(renewRaw, 10);
+      const renew_days = auto_renew ? (Number.isFinite(renewParsed) ? renewParsed : 7) : 0;
+      const domain = document.getElementById('cert-domain').value.trim();
+      if (!name) return toast('Certificate name required', true);
+      if (auto_renew && renew_days <= 0) return toast('Renew days must be a positive number', true);
+      if (type === 'letsencrypt' && auto_generate && !domain) return toast('Domain is required for Let\'s Encrypt', true);
+
+      if (type === 'letsencrypt' && auto_generate) {
+        const res = await fetch('/admin/api/cert/upsert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+          body: JSON.stringify({ name, type, auto_generate, auto_renew, renew_days, domain })
+        });
+        const j = await res.json();
+        toast(j.ok ? 'Certificate registered' : (j.error || 'Failed'), !j.ok);
+        if (j.ok) { closeCertModal(); refresh(); }
+        return;
+      }
+
+      const certFile = document.getElementById('cert-file').files[0];
+      const keyFile = document.getElementById('key-file').files[0];
+      if (!certFile || !keyFile) return toast('Both files required', true);
+
+      const fd = new FormData();
+      fd.append('name', name);
+      fd.append('type', type);
+      fd.append('auto_generate', auto_generate);
+      fd.append('auto_renew', auto_renew);
+      fd.append('renew_days', renew_days);
+      fd.append('cert_file', certFile);
+      fd.append('key_file', keyFile);
+
+      const res = await fetch('/admin/api/cert/upload', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrf() },
+        body: fd
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Certificate uploaded' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) { closeCertModal(); refresh(); }
+    }
+
+    async function deleteCert(name) {
+      if (!confirm(`Delete certificate "${name}"?`)) return;
+      const res = await fetch('/admin/api/cert/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ name })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Certificate deleted' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) refresh();
+    }
+
+    async function clearLogs(range) {
+      const label = range === 'all' ? 'all logs' : 'logs from the last 24 hours';
+      if (!confirm(`Delete ${label}?`)) return;
+      const res = await fetch('/admin/api/logs/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ range })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Logs cleared' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) loadLogs();
+    }
+
+    async function updatePlugin(name, enabled) {
+      const res = await fetch('/admin/api/plugins/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ name, enabled })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Plugin updated' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) refresh();
+    }
+
+    async function loadAudit() {
+      try {
+        const res = await fetch('/admin/api/audit');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        renderAudit(payload.logs || []);
+      } catch (e) {
+        toast('Failed to load audit log: ' + e.message, true);
+      }
+    }
+
+    function renderAudit(logs) {
+      const el = document.getElementById('audit-list');
+      if (!logs || logs.length === 0) {
+        el.innerHTML = '<em style="color:var(--muted);">No audit entries</em>';
+        return;
+      }
+      el.innerHTML = logs.map(entry => {
+        return `<div><span class="badge info">${esc(entry.action || '')}</span> <small style="color:var(--muted);">${esc(entry.time || '')}</small> ${esc(entry.user || '')} → ${esc(entry.target || '')} ${entry.detail ? `(${esc(entry.detail)})` : ''}</div>`;
+      }).join('');
+    }
+
+    async function loadConfigExport() {
+      try {
+        const [jsonRes, yamlRes] = await Promise.all([
+          fetch('/admin/api/config/export'),
+          fetch('/admin/api/config/export?format=yaml')
+        ]);
+        if (!jsonRes.ok || !yamlRes.ok) throw new Error('Export failed');
+        document.getElementById('config-json').value = await jsonRes.text();
+        document.getElementById('config-yaml').value = await yamlRes.text();
+      } catch (e) {
+        toast('Failed to export config: ' + e.message, true);
+      }
+    }
+
+    async function importConfig() {
+      const format = document.getElementById('config-import-format').value;
+      const payload = document.getElementById('config-import').value.trim();
+      if (!payload) return toast('Paste a config payload first', true);
+      const res = await fetch('/admin/api/config/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+        body: JSON.stringify({ format, payload })
+      });
+      const j = await res.json();
+      toast(j.ok ? 'Config imported' : (j.error || 'Failed'), !j.ok);
+      if (j.ok) {
+        document.getElementById('config-import').value = '';
+        refresh();
+        loadConfigExport();
+      }
+    }
+
+    async function copyConfig(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      try {
+        await navigator.clipboard.writeText(el.value);
+        toast('Copied to clipboard');
+      } catch (e) {
+        toast('Clipboard unavailable', true);
+      }
+    }
+
+    // Event Listeners
+    window.addEventListener('load', () => {
+      initTheme();
+      document.querySelectorAll('.nav button').forEach(btn => btn.addEventListener('click', () => setTab(btn.id.split('-')[1])));
+      document.querySelector('#page-hosts .btn.primary').addEventListener('click', openHostModal);
+      document.querySelector('#page-certs .btn.primary').addEventListener('click', openCertModal);
+      document.querySelector('#page-users .btn.primary').addEventListener('click', openUserModal);
+      document.querySelector('#page-streams .btn.primary').addEventListener('click', openStreamModal);
+
+      document.querySelectorAll('#page-hosts .btn')[1].addEventListener('click', refresh);
+      document.querySelectorAll('#page-certs .btn')[1].addEventListener('click', refresh);
+      document.querySelectorAll('#page-users .btn')[1].addEventListener('click', refresh);
+      document.querySelectorAll('#page-streams .btn')[1].addEventListener('click', refresh);
+      document.getElementById('audit-refresh').addEventListener('click', loadAudit);
+      document.getElementById('config-refresh').addEventListener('click', loadConfigExport);
+      document.getElementById('config-copy-json').addEventListener('click', () => copyConfig('config-json'));
+      document.getElementById('config-copy-yaml').addEventListener('click', () => copyConfig('config-yaml'));
+      document.getElementById('config-import-btn').addEventListener('click', importConfig);
+      document.getElementById('logs-refresh').addEventListener('click', loadLogs);
+      document.getElementById('logs-clear-24h').addEventListener('click', () => clearLogs('last24h'));
+      document.getElementById('logs-clear-all').addEventListener('click', () => clearLogs('all'));
+      document.getElementById('logs-per-page').addEventListener('change', (e) => {
+        logsState.perPage = parseInt(e.target.value, 10) || 20;
+        logsState.page = 1;
+        renderLogsPagination();
+      });
+      document.getElementById('hosts-per-page').addEventListener('change', (e) => {
+        hostState.perPage = parseInt(e.target.value, 10) || 20;
+        hostState.page = 1;
+        renderHosts();
+      });
+      document.getElementById('logs-live').addEventListener('change', handleLiveLogsToggle);
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      setActiveTrendRange(trendState.range);
+      document.querySelectorAll('[data-trend-range]').forEach(button => {
+        button.addEventListener('click', () => {
+          trendState.range = button.dataset.trendRange;
+          setActiveTrendRange(trendState.range);
+          renderStats();
+        });
+      });
+
+      document.getElementById('host-close').addEventListener('click', closeHostModal);
+      document.querySelectorAll('#host-modal .btn.primary').forEach(button => {
+        button.addEventListener('click', saveHost);
+      });
+      document.querySelector('#cert-modal .btn').addEventListener('click', closeCertModal);
+      document.querySelector('#cert-modal .btn.primary').addEventListener('click', saveCert);
+      document.querySelector('#user-modal .btn').addEventListener('click', closeUserModal);
+      document.querySelector('#user-modal .btn.primary').addEventListener('click', saveUser);
+      document.querySelector('#stream-modal .btn').addEventListener('click', closeStreamModal);
+      document.querySelector('#stream-modal .btn.primary').addEventListener('click', saveStream);
+
+      document.getElementById('host-ssl').addEventListener('change', toggleSSLFields);
+      document.getElementById('host-template').addEventListener('change', (e) => {
+        applyTemplateDefaults(e.target.value);
+      });
+      document.getElementById('host-security-template').addEventListener('change', (e) => {
+        const value = e.target.value;
+        if (value !== 'custom') {
+          applySecurityTemplate(value);
+        }
+      });
+      document.getElementById('host-waf-profile').addEventListener('change', (e) => {
+        const value = e.target.value;
+        if (value !== 'custom') {
+          applyWafProfile(value);
+        }
+      });
+      document.getElementById('host-waf-all').addEventListener('change', (e) => {
+        updateWafRulesDisabled(e.target.checked);
+        document.getElementById('host-waf-profile').value = 'custom';
+      });
+      document.getElementById('host-block-all').addEventListener('change', (e) => {
+        updateExploitBlocksDisabled(e.target.checked);
+        document.getElementById('host-security-template').value = 'custom';
+      });
+      wafRuleFields.forEach(f => {
+        document.getElementById(f.id).addEventListener('change', () => {
+          const all = wafRuleFields.every(field => document.getElementById(field.id).checked);
+          const scanAll = document.getElementById('host-waf-all');
+          scanAll.checked = all;
+          updateWafRulesDisabled(all);
+          document.getElementById('host-waf-profile').value = 'custom';
+        });
+      });
+      exploitFields.forEach(f => {
+        document.getElementById(f.id).addEventListener('change', () => {
+          const all = exploitFields.every(field => document.getElementById(field.id).checked);
+          const blockAll = document.getElementById('host-block-all');
+          blockAll.checked = all;
+          updateExploitBlocksDisabled(all);
+          document.getElementById('host-security-template').value = 'custom';
+        });
+      });
+      document.getElementById('cert-type').addEventListener('change', toggleCertFields);
+      document.getElementById('cert-autogenerate').addEventListener('change', toggleCertFields);
+      document.getElementById('cert-autorenew').addEventListener('change', toggleCertFields);
+      document.getElementById('log-level').addEventListener('change', updateLogLevel);
+
+      document.getElementById('host-search').addEventListener('input', () => {
+        hostState.page = 1;
+        renderHosts();
+      });
+      document.getElementById('cert-search').addEventListener('input', renderCerts);
+      hostState.perPage = parseInt(document.getElementById('hosts-per-page').value, 10) || 20;
+      logsState.perPage = parseInt(document.getElementById('logs-per-page').value, 10) || 20;
+
+      document.getElementById('hosts-tbody').addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn') && e.target.textContent.trim() === 'Edit') {
+          const domain = e.target.closest('tr').querySelector('td strong').textContent;
+          editHost(domain);
+        } else if (e.target.classList.contains('btn') && e.target.classList.contains('danger')) {
+          const domain = e.target.closest('tr').querySelector('td strong').textContent;
+          deleteHost(domain);
+        }
+      });
+
+      document.getElementById('certs-tbody').addEventListener('click', (e) => {
+        if (!e.target.classList.contains('btn')) return;
+        const name = e.target.closest('tr').querySelector('td strong').textContent;
+        if (e.target.classList.contains('danger')) {
+          deleteCert(name);
+        } else if (e.target.dataset.action === 'edit') {
+          editCert(name);
+        }
+      });
+
+      document.getElementById('streams-tbody').addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn') && e.target.textContent.trim() === 'Edit') {
+          const name = e.target.closest('tr').querySelector('td strong').textContent;
+          editStream(name);
+        } else if (e.target.classList.contains('btn') && e.target.classList.contains('danger')) {
+          const name = e.target.closest('tr').querySelector('td strong').textContent;
+          deleteStream(name);
+        }
+      });
+
+      document.getElementById('users-tbody').addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn') && e.target.textContent.trim() === 'Edit') {
+          const username = e.target.closest('tr').querySelector('td strong').textContent;
+          editUser(username);
+        } else if (e.target.classList.contains('btn') && e.target.classList.contains('danger')) {
+          const username = e.target.closest('tr').querySelector('td strong').textContent;
+          deleteUser(username);
+        }
+      });
+
+      document.getElementById('logs-pagination').addEventListener('click', (e) => {
+        if (!e.target.classList.contains('btn')) return;
+        const page = parseInt(e.target.dataset.page, 10);
+        if (page) {
+          logsState.page = page;
+          renderLogsPagination();
+        }
+      });
+
+      document.getElementById('hosts-pagination').addEventListener('click', (e) => {
+        if (!e.target.classList.contains('btn')) return;
+        const page = parseInt(e.target.dataset.page, 10);
+        if (page) {
+          hostState.page = page;
+          renderHosts();
+        }
+      });
+
+      document.getElementById('plugins-list').addEventListener('change', (e) => {
+        if (e.target.matches('input[type="checkbox"][data-plugin]')) {
+          updatePlugin(e.target.dataset.plugin, e.target.checked);
+        }
+      });
+
+      refresh();
+    });
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const button = document.getElementById('theme-toggle');
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      button.setAttribute('aria-pressed', next === 'dark' ? 'true' : 'false');
+      button.textContent = next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+
+    function initTheme() {
+      const root = document.documentElement;
+      const stored = localStorage.getItem('theme');
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      const initial = stored || (prefersLight ? 'light' : 'dark');
+      root.setAttribute('data-theme', initial);
+      const button = document.getElementById('theme-toggle');
+      button.setAttribute('aria-pressed', initial === 'dark' ? 'true' : 'false');
+      button.textContent = initial === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+
+    function stopLiveLogs() {
+      if (logsState.timer) {
+        clearInterval(logsState.timer);
+        logsState.timer = null;
+      }
+    }
+
+    function handleLiveLogsToggle() {
+      const enabled = document.getElementById('logs-live').checked;
+      if (!enabled) {
+        stopLiveLogs();
+        return;
+      }
+      if (!logsState.timer) {
+        logsState.timer = setInterval(loadLogs, 5000);
+      }
+    }
+  </script>
+{{end}}
+</body>
+</html>
