@@ -3199,6 +3199,7 @@ func adminAPILogsClearHandler(w http.ResponseWriter, r *http.Request) {
 
 type hostUpsertReq struct {
 	Domain               string               `json:"domain"`
+	PreviousDomain       string               `json:"previous_domain,omitempty"`
 	Backends             []string             `json:"backends"`
 	GeoRouting           map[string]string    `json:"geo_routing"`
 	MirrorBackends       []string             `json:"mirror_backends"`
@@ -3236,6 +3237,15 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, 400, apiResp{OK: false, Error: "invalid json"})
 		return
+	}
+
+	previousDomain := ""
+	if strings.TrimSpace(req.PreviousDomain) != "" {
+		previousDomain = normalizeHost(req.PreviousDomain)
+		if err := validateHostnameStrict(previousDomain); err != nil {
+			writeJSON(w, 400, apiResp{OK: false, Error: "invalid previous hostname: " + err.Error()})
+			return
+		}
 	}
 
 	domain := normalizeHost(req.Domain)
@@ -3300,7 +3310,11 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 
 	// Remember previous config to detect new LE domains
-	oldHC, hadOld := mcfg.Hosts[domain]
+	lookupDomain := domain
+	if previousDomain != "" {
+		lookupDomain = previousDomain
+	}
+	oldHC, hadOld := mcfg.Hosts[lookupDomain]
 	oldWasLE := hadOld && oldHC.SSL && (oldHC.AutoCert || (oldHC.CertName != "" && func() bool {
 		if cc, ok := mcfg.Certs[oldHC.CertName]; ok {
 			return cc.Type == "letsencrypt" && cc.AutoGenerate
@@ -3362,6 +3376,9 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if previousDomain != "" && previousDomain != domain {
+		delete(mcfg.Hosts, previousDomain)
+	}
 	mcfg.Hosts[domain] = hc
 
 	if err := saveConfigToDiskLocked(); err != nil {
