@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"flag"
 	"fmt"
 	"hash/fnv"
 	"html"
@@ -1409,27 +1410,27 @@ func getClientIP(r *http.Request) string {
 	return host
 }
 
-func loadConfigFromDisk() error {
+func loadConfigFromDisk() (bool, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	b, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return false, nil
 		}
-		return err
+		return false, err
 	}
 	cf, changed, err := decodeConfigBytes(b)
 	if err != nil {
-		return err
+		return false, err
 	}
 	mcfg = cf
 	if changed {
 		if err := saveConfigToDiskLocked(); err != nil {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return changed, nil
 }
 
 func ensureAdminUser() error {
@@ -4369,12 +4370,38 @@ func ensureWorkingDir() {
 }
 
 func main() {
+	upgradeConfig := flag.Bool("upgrade-config", false, "Upgrade the config file and exit.")
+	flag.Parse()
+
 	ensureWorkingDir()
 	if err := os.MkdirAll(cacheDir, 0700); err != nil {
 		log.Fatalf("Failed to create cache dir: %v", err)
 	}
-	if err := loadConfigFromDisk(); err != nil {
+
+	configExists := true
+	if _, err := os.Stat(configFile); err != nil {
+		if os.IsNotExist(err) {
+			configExists = false
+		} else {
+			log.Fatalf("config check error: %v", err)
+		}
+	}
+
+	changed, err := loadConfigFromDisk()
+	if err != nil {
 		log.Fatalf("loadConfig error: %v", err)
+	}
+	if *upgradeConfig {
+		if !configExists {
+			fmt.Println("No config file found; skipping upgrade.")
+			return
+		}
+		if changed {
+			fmt.Println("Config upgraded.")
+		} else {
+			fmt.Println("Config already up to date.")
+		}
+		return
 	}
 	if err := ensureAdminUser(); err != nil {
 		log.Fatalf("ensure admin error: %v", err)
