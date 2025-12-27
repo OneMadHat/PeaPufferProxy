@@ -169,8 +169,9 @@ SERVICE
 
 if have_cmd systemctl; then
   $SUDO systemctl daemon-reload
-  $SUDO systemctl enable --now puffproxy
-  echo "PeaPufferProxy (puffproxy) is installed and running."
+  $SUDO systemctl enable puffproxy
+  $SUDO systemctl restart puffproxy
+  echo "PeaPufferProxy (puffproxy) is installed and running (service restarted)."
 else
   echo "Systemd is not available. Run /usr/local/bin/puffproxy manually." >&2
 fi
