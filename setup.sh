@@ -136,6 +136,9 @@ JSON
 fi
 $SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${CONFIG_FILE}"
 
+echo "Checking for configuration upgrades..."
+$SUDO /usr/local/bin/puffproxy --upgrade-config
+
 ADMIN_FILE="${SERVICE_HOME}/.admin_credentials"
 if [[ ! -f "${ADMIN_FILE}" ]]; then
   $SUDO touch "${ADMIN_FILE}"
