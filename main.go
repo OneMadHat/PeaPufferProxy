@@ -61,6 +61,8 @@ var (
 			HTTP3Enabled:   false,
 			HTTP3Advertise: false,
 			HTTP3MaxAge:    86400,
+			HTTPPorts:      []int{80},
+			HTTPSPorts:     []int{443},
 			UpdateChannel:  "stable",
 		},
 	}
@@ -417,6 +419,8 @@ type GlobalSettings struct {
 	HTTP3Enabled   bool   `json:"http3_enabled"`
 	HTTP3Advertise bool   `json:"http3_advertise"`
 	HTTP3MaxAge    int    `json:"http3_max_age"`
+	HTTPPorts      []int  `json:"http_ports,omitempty"`
+	HTTPSPorts     []int  `json:"https_ports,omitempty"`
 	UpdateChannel  string `json:"update_channel"`
 }
 
@@ -1316,6 +1320,45 @@ func normalizeHost(hostport string) string {
 	return strings.ToLower(h)
 }
 
+func intSlicesEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizePorts(ports []int, defaults []int) ([]int, bool) {
+	changed := false
+	normalized := make([]int, 0, len(ports))
+	seen := make(map[int]struct{}, len(ports))
+	for _, port := range ports {
+		if port < 1 || port > 65535 {
+			changed = true
+			continue
+		}
+		if _, ok := seen[port]; ok {
+			changed = true
+			continue
+		}
+		seen[port] = struct{}{}
+		normalized = append(normalized, port)
+	}
+	if len(normalized) == 0 {
+		normalized = append([]int(nil), defaults...)
+		if !intSlicesEqual(ports, normalized) {
+			changed = true
+		}
+	} else if !intSlicesEqual(ports, normalized) {
+		changed = true
+	}
+	return normalized, changed
+}
+
 func singleJoiningSlash(a, b string) string {
 	aslash := strings.HasSuffix(a, "/")
 	bslash := strings.HasPrefix(b, "/")
@@ -1504,6 +1547,8 @@ func decodeConfigBytes(b []byte) (ConfigFile, bool, error) {
 			HTTP3Enabled:   false,
 			HTTP3Advertise: false,
 			HTTP3MaxAge:    86400,
+			HTTPPorts:      []int{80},
+			HTTPSPorts:     []int{443},
 			UpdateChannel:  "stable",
 		},
 	}
@@ -1676,6 +1721,8 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 			HTTP3Enabled:   false,
 			HTTP3Advertise: false,
 			HTTP3MaxAge:    86400,
+			HTTPPorts:      []int{80},
+			HTTPSPorts:     []int{443},
 			UpdateChannel:  "stable",
 		}
 		changed = true
@@ -1688,6 +1735,16 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 			cf.Settings.UpdateChannel = "stable"
 			changed = true
 		}
+	}
+	httpPorts, httpChanged := normalizePorts(cf.Settings.HTTPPorts, []int{80})
+	if httpChanged {
+		cf.Settings.HTTPPorts = httpPorts
+		changed = true
+	}
+	httpsPorts, httpsChanged := normalizePorts(cf.Settings.HTTPSPorts, []int{443})
+	if httpsChanged {
+		cf.Settings.HTTPSPorts = httpsPorts
+		changed = true
 	}
 	for name, plugin := range availablePlugins {
 		cfg := cf.Plugins[name]
@@ -4353,11 +4410,44 @@ func recordAudit(r *http.Request, action, target, detail string) {
 	logger.Printf(`{"level":"info","msg":"audit","user":%q,"action":%q,"target":%q,"detail":%q}`, entry.User, entry.Action, entry.Target, entry.Detail)
 }
 
-func startHTTP3Server(handler http.Handler, settings GlobalSettings) {
+func startHTTP3Server(handler http.Handler, port int, settings GlobalSettings) {
 	_ = handler
 	if settings.HTTP3Enabled {
-		logger.Printf(`{"level":"warn","msg":"http3 support unavailable (build without quic module)","addr":":443/udp"}`)
+		logger.Printf(`{"level":"warn","msg":"http3 support unavailable (build without quic module)","addr":%q}`, fmt.Sprintf(":%d/udp", port))
 	}
+}
+
+func startHTTPServer(port int, handler http.Handler) {
+	addr := fmt.Sprintf(":%d", port)
+	logger.Printf(`{"level":"info","msg":"http listening","addr":%q}`, addr)
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	log.Fatal(srv.ListenAndServe())
+}
+
+func startHTTPSServer(port int, handler http.Handler) {
+	addr := fmt.Sprintf(":%d", port)
+	httpsSrv := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			MinVersion:     tls.VersionTLS12,
+			GetCertificate: getCertificate,
+		},
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       0,
+		WriteTimeout:      0,
+		IdleTimeout:       2 * time.Minute,
+	}
+
+	logger.Printf(`{"level":"info","msg":"https proxy listening","addr":%q}`, addr)
+	log.Fatal(httpsSrv.ListenAndServeTLS("", ""))
 }
 
 func ensureWorkingDir() {
@@ -4468,38 +4558,20 @@ func main() {
 		log.Fatal(srv.ListenAndServe())
 	}()
 
-	go func() {
-		logger.Printf(`{"level":"info","msg":"http listening","addr":":80"}`)
-		srv := &http.Server{
-			Addr:              ":80",
-			Handler:           accessLogMiddleware(http.HandlerFunc(httpHandler)),
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      30 * time.Second,
-			IdleTimeout:       2 * time.Minute,
-		}
-		log.Fatal(srv.ListenAndServe())
-	}()
-
 	proxyMux := http.NewServeMux()
 	proxyMux.HandleFunc("/", httpsHandler)
 
 	settings := getSnap().Settings
-	go startHTTP3Server(accessLogMiddleware(proxyMux), settings)
-
-	httpsSrv := &http.Server{
-		Addr:    ":443",
-		Handler: accessLogMiddleware(proxyMux),
-		TLSConfig: &tls.Config{
-			MinVersion:     tls.VersionTLS12,
-			GetCertificate: getCertificate,
-		},
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       0,
-		WriteTimeout:      0,
-		IdleTimeout:       2 * time.Minute,
+	plainHandler := accessLogMiddleware(http.HandlerFunc(httpHandler))
+	for _, port := range settings.HTTPPorts {
+		go startHTTPServer(port, plainHandler)
 	}
 
-	logger.Printf(`{"level":"info","msg":"https proxy listening","addr":":443"}`)
-	log.Fatal(httpsSrv.ListenAndServeTLS("", ""))
+	proxyHandler := accessLogMiddleware(proxyMux)
+	for _, port := range settings.HTTPSPorts {
+		go startHTTP3Server(proxyHandler, port, settings)
+		go startHTTPSServer(port, proxyHandler)
+	}
+
+	select {}
 }
