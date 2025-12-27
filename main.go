@@ -189,7 +189,7 @@ type trafficPoint struct {
 
 const (
 	adminCredsFile = ".admin_credentials"
-	workingDir     = "/opt"
+	workingDir     = "/opt/puffproxy"
 )
 
 var (
