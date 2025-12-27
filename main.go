@@ -187,7 +187,10 @@ type trafficPoint struct {
 	Bytes int64  `json:"bytes"`
 }
 
-const adminCredsFile = ".admin_credentials"
+const (
+	adminCredsFile = ".admin_credentials"
+	workingDir     = "/opt"
+)
 
 var (
 	securityTemplates = map[string]ExploitBlockConfig{
@@ -4353,7 +4356,17 @@ func startHTTP3Server(handler http.Handler, settings GlobalSettings) {
 	}
 }
 
+func ensureWorkingDir() {
+	if err := os.MkdirAll(workingDir, 0755); err != nil {
+		log.Fatalf("Failed to create working dir: %v", err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		log.Fatalf("Failed to set working dir: %v", err)
+	}
+}
+
 func main() {
+	ensureWorkingDir()
 	if err := os.MkdirAll(cacheDir, 0700); err != nil {
 		log.Fatalf("Failed to create cache dir: %v", err)
 	}
