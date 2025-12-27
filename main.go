@@ -336,15 +336,18 @@ var (
 			},
 		},
 	}
-	wafRuleNames = func() map[string]struct{} {
-		names := map[string]struct{}{}
-		for _, rules := range wafProfiles {
-			for _, rule := range rules {
-				names[rule.Name] = struct{}{}
-			}
-		}
-		return names
-	}()
+	wafRuleNames = map[string]struct{}{
+		"sql-injection":         {},
+		"xss":                   {},
+		"path-traversal":        {},
+		"command-injection":     {},
+		"protocol-anomalies":    {},
+		"local-file-inclusion":  {},
+		"remote-file-inclusion": {},
+		"scanner-probes":        {},
+		"bad-bots":              {},
+		"request-smuggling":     {},
+	}
 )
 
 type CertConfig struct {
