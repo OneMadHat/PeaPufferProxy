@@ -73,7 +73,8 @@ var (
 	csrfK                     = newCSRFKey()
 	logLevel           uint32 = logLevelInfo
 	logs                      = newLogBuffer(500)
-	logger                    = log.New(newLogWriter(os.Stdout, logs, &logLevel), "", 0)
+	logSink                   = newLogWriter(os.Stdout, logs, &logLevel)
+	logger                    = log.New(logSink, "", 0)
 	defaultRenewBefore        = 7 * 24 * time.Hour
 
 	certManager = &autocert.Manager{
@@ -193,6 +194,7 @@ type trafficPoint struct {
 const (
 	adminCredsFile = ".admin_credentials"
 	workingDir     = "/opt/puffproxy"
+	logsDir        = "logs"
 )
 
 var (
@@ -374,7 +376,6 @@ type HostConfig struct {
 	WebSocket            bool                 `json:"websocket"`
 	ExploitBlocks        ExploitBlockConfig   `json:"exploit_blocks"`
 	LoadBalancing        string               `json:"load_balancing,omitempty"`
-	HealthCheckPath      string               `json:"health_check_path,omitempty"`
 	SecurityTemplate     string               `json:"security_template,omitempty"`
 	SecurityIntegrations SecurityIntegrations `json:"security_integrations,omitempty"`
 	RequireAuth          bool                 `json:"require_auth"`
@@ -493,7 +494,6 @@ func (h *HostConfig) UnmarshalJSON(data []byte) error {
 		BlockExploits        *bool                `json:"block_exploits"`
 		ExploitBlocks        *ExploitBlockConfig  `json:"exploit_blocks"`
 		LoadBalancing        string               `json:"load_balancing"`
-		HealthCheckPath      string               `json:"health_check_path"`
 		SecurityTemplate     string               `json:"security_template"`
 		SecurityIntegrations SecurityIntegrations `json:"security_integrations"`
 		RequireAuth          bool                 `json:"require_auth"`
@@ -535,7 +535,6 @@ func (h *HostConfig) UnmarshalJSON(data []byte) error {
 		WebSocket:            raw.WebSocket,
 		ExploitBlocks:        blocks,
 		LoadBalancing:        loadBalancing,
-		HealthCheckPath:      normalizeHealthCheckPath(raw.HealthCheckPath),
 		SecurityTemplate:     normalizeSecurityTemplate(raw.SecurityTemplate),
 		SecurityIntegrations: raw.SecurityIntegrations,
 		RequireAuth:          raw.RequireAuth,
@@ -650,7 +649,7 @@ func (m *streamProxyManager) sync(proxies []StreamProxyConfig) {
 		}
 		proxy := &streamProxy{cfg: cfg, stop: make(chan struct{})}
 		if err := proxy.start(); err != nil {
-			logger.Printf(`{"level":"error","msg":"failed to start stream proxy","name":%q,"err":%q}`, cfg.Name, err.Error())
+			logger.Printf(`{"level":"error","part":%q,"msg":"failed to start stream proxy","name":%q,"err":%q}`, logPartStream, cfg.Name, err.Error())
 			continue
 		}
 		m.proxies[key] = proxy
@@ -684,7 +683,7 @@ func (p *streamProxy) startTCP() error {
 		return err
 	}
 	p.listener = ln
-	logger.Printf(`{"level":"info","msg":"tcp stream proxy listening","listen":%q,"backend":%q}`, p.cfg.Listen, p.cfg.Backend)
+	logger.Printf(`{"level":"info","part":%q,"msg":"tcp stream proxy listening","listen":%q,"backend":%q}`, logPartStream, p.cfg.Listen, p.cfg.Backend)
 	go func() {
 		for {
 			conn, err := ln.Accept()
@@ -693,7 +692,7 @@ func (p *streamProxy) startTCP() error {
 				case <-p.stop:
 					return
 				default:
-					logger.Printf(`{"level":"warn","msg":"tcp proxy accept failed","listen":%q,"err":%q}`, p.cfg.Listen, err.Error())
+					logger.Printf(`{"level":"warn","part":%q,"msg":"tcp proxy accept failed","listen":%q,"err":%q}`, logPartStream, p.cfg.Listen, err.Error())
 					continue
 				}
 			}
@@ -707,7 +706,7 @@ func (p *streamProxy) handleTCP(client net.Conn) {
 	defer client.Close()
 	backend, err := net.Dial("tcp", p.cfg.Backend)
 	if err != nil {
-		logger.Printf(`{"level":"warn","msg":"tcp proxy backend dial failed","backend":%q,"err":%q}`, p.cfg.Backend, err.Error())
+		logger.Printf(`{"level":"warn","part":%q,"msg":"tcp proxy backend dial failed","backend":%q,"err":%q}`, logPartStream, p.cfg.Backend, err.Error())
 		return
 	}
 	defer backend.Close()
@@ -721,7 +720,7 @@ func (p *streamProxy) startUDP() error {
 		return err
 	}
 	p.packetConn = pc
-	logger.Printf(`{"level":"info","msg":"udp stream proxy listening","listen":%q,"backend":%q}`, p.cfg.Listen, p.cfg.Backend)
+	logger.Printf(`{"level":"info","part":%q,"msg":"udp stream proxy listening","listen":%q,"backend":%q}`, logPartStream, p.cfg.Listen, p.cfg.Backend)
 	go p.handleUDP(pc)
 	return nil
 }
@@ -729,7 +728,7 @@ func (p *streamProxy) startUDP() error {
 func (p *streamProxy) handleUDP(pc net.PacketConn) {
 	backendAddr, err := net.ResolveUDPAddr("udp", p.cfg.Backend)
 	if err != nil {
-		logger.Printf(`{"level":"error","msg":"udp proxy backend resolve failed","backend":%q,"err":%q}`, p.cfg.Backend, err.Error())
+		logger.Printf(`{"level":"error","part":%q,"msg":"udp proxy backend resolve failed","backend":%q,"err":%q}`, logPartStream, p.cfg.Backend, err.Error())
 		return
 	}
 	type udpClient struct {
@@ -750,7 +749,7 @@ func (p *streamProxy) handleUDP(pc net.PacketConn) {
 					continue
 				}
 			}
-			logger.Printf(`{"level":"warn","msg":"udp proxy read failed","listen":%q,"err":%q}`, p.cfg.Listen, err.Error())
+			logger.Printf(`{"level":"warn","part":%q,"msg":"udp proxy read failed","listen":%q,"err":%q}`, logPartStream, p.cfg.Listen, err.Error())
 			continue
 		}
 		key := addr.String()
@@ -758,7 +757,7 @@ func (p *streamProxy) handleUDP(pc net.PacketConn) {
 		if client == nil {
 			conn, err := net.DialUDP("udp", nil, backendAddr)
 			if err != nil {
-				logger.Printf(`{"level":"warn","msg":"udp proxy backend dial failed","backend":%q,"err":%q}`, p.cfg.Backend, err.Error())
+				logger.Printf(`{"level":"warn","part":%q,"msg":"udp proxy backend dial failed","backend":%q,"err":%q}`, logPartStream, p.cfg.Backend, err.Error())
 				continue
 			}
 			client = &udpClient{conn: conn, addr: addr}
@@ -799,6 +798,14 @@ const (
 	logLevelInfo
 	logLevelWarn
 	logLevelError
+)
+
+const (
+	logPartSystem = "system"
+	logPartProxy  = "proxy"
+	logPartAdmin  = "admin"
+	logPartAudit  = "audit"
+	logPartStream = "stream"
 )
 
 type logEntry struct {
@@ -902,13 +909,22 @@ func (b *auditBuffer) clear() {
 }
 
 type logWriter struct {
-	out   io.Writer
-	buf   *logBuffer
-	level *uint32
+	mu          sync.RWMutex
+	out         io.Writer
+	partWriters map[string]io.Writer
+	buf         *logBuffer
+	level       *uint32
 }
 
 func newLogWriter(out io.Writer, buf *logBuffer, level *uint32) *logWriter {
 	return &logWriter{out: out, buf: buf, level: level}
+}
+
+func (w *logWriter) setOutputs(out io.Writer, partWriters map[string]io.Writer) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.out = out
+	w.partWriters = partWriters
 }
 
 func (w *logWriter) Write(p []byte) (int, error) {
@@ -918,19 +934,41 @@ func (w *logWriter) Write(p []byte) (int, error) {
 		if line == "" {
 			continue
 		}
-		entry := parseLogEntry(line)
+		entry, payload := parseLogEntry(line)
 		w.buf.add(entry)
 		if levelFromString(entry.Level) < atomic.LoadUint32(w.level) {
 			continue
 		}
-		if _, err := io.WriteString(w.out, line+"\n"); err != nil {
-			return len(p), err
+		part := logPartFromPayload(payload)
+		w.mu.RLock()
+		out := w.out
+		partWriter := w.partWriters[part]
+		w.mu.RUnlock()
+		if out != nil {
+			if _, err := io.WriteString(out, line+"\n"); err != nil {
+				return len(p), err
+			}
+		}
+		if partWriter != nil {
+			if _, err := io.WriteString(partWriter, line+"\n"); err != nil {
+				return len(p), err
+			}
 		}
 	}
 	return len(p), nil
 }
 
-func parseLogEntry(line string) logEntry {
+func logPartFromPayload(payload map[string]any) string {
+	if payload == nil {
+		return logPartSystem
+	}
+	if part, ok := payload["part"].(string); ok && part != "" {
+		return strings.ToLower(part)
+	}
+	return logPartSystem
+}
+
+func parseLogEntry(line string) (logEntry, map[string]any) {
 	entry := logEntry{
 		Time:    time.Now().Format(time.RFC3339),
 		Level:   "info",
@@ -939,7 +977,7 @@ func parseLogEntry(line string) logEntry {
 	}
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(line), &payload); err != nil {
-		return entry
+		return entry, nil
 	}
 	if lvl, ok := payload["level"].(string); ok && lvl != "" {
 		entry.Level = strings.ToLower(lvl)
@@ -947,13 +985,13 @@ func parseLogEntry(line string) logEntry {
 	if msg, ok := payload["msg"].(string); ok && msg != "" {
 		entry.Message = formatLogMessage(msg, payload)
 	}
-	return entry
+	return entry, payload
 }
 
 func formatLogMessage(msg string, payload map[string]any) string {
 	keys := make([]string, 0, len(payload))
 	for k := range payload {
-		if k == "level" || k == "msg" {
+		if k == "level" || k == "msg" || k == "part" {
 			continue
 		}
 		keys = append(keys, k)
@@ -1043,20 +1081,6 @@ func normalizeLoadBalancing(value string) string {
 		return value
 	}
 	return ""
-}
-
-func normalizeHealthCheckPath(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return ""
-	}
-	if !strings.HasPrefix(value, "/") {
-		return ""
-	}
-	if strings.ContainsAny(value, " \t\r\n") {
-		return ""
-	}
-	return value
 }
 
 func normalizeGeoRouting(rules map[string]string) map[string]string {
@@ -1308,16 +1332,100 @@ func setLogLevel(level string) error {
 	return nil
 }
 
-func normalizeHost(hostport string) string {
+func splitHostPort(hostport string) (string, string, bool) {
 	h := strings.TrimSpace(hostport)
 	if h == "" {
+		return "", "", false
+	}
+	if host, port, err := net.SplitHostPort(h); err == nil {
+		return host, port, true
+	}
+	if idx := strings.LastIndex(h, ":"); idx > 0 && idx < len(h)-1 {
+		port := h[idx+1:]
+		if isAllDigits(port) {
+			return h[:idx], port, true
+		}
+	}
+	return h, "", false
+}
+
+func normalizeHost(hostport string) string {
+	host, port, hasPort := splitHostPort(hostport)
+	host = strings.TrimSpace(host)
+	if host == "" {
 		return ""
 	}
-	if host, _, err := net.SplitHostPort(h); err == nil {
-		h = host
+	host = strings.TrimSuffix(host, ".")
+	host = strings.ToLower(host)
+	if hasPort {
+		return host + ":" + port
 	}
-	h = strings.TrimSuffix(h, ".")
-	return strings.ToLower(h)
+	return host
+}
+
+func normalizeHostname(hostport string) string {
+	host, _, _ := splitHostPort(hostport)
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+	host = strings.TrimSuffix(host, ".")
+	return strings.ToLower(host)
+}
+
+func isAllDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func hostLookupCandidates(hostport string) []string {
+	normalized := normalizeHost(hostport)
+	if normalized == "" {
+		return nil
+	}
+	hostname := normalizeHostname(normalized)
+	if hostname != normalized {
+		return []string{normalized, hostname}
+	}
+	return []string{normalized}
+}
+
+func findHostConfig(s *ConfigSnapshot, hostport string) (string, HostConfig, bool) {
+	for _, candidate := range hostLookupCandidates(hostport) {
+		if cfg, ok := s.Hosts[candidate]; ok {
+			return candidate, cfg, true
+		}
+	}
+	return "", HostConfig{}, false
+}
+
+func findHostConfigForHostname(s *ConfigSnapshot, hostname string) (string, HostConfig, bool) {
+	hostname = normalizeHostname(hostname)
+	if hostname == "" {
+		return "", HostConfig{}, false
+	}
+	if cfg, ok := s.Hosts[hostname]; ok {
+		return hostname, cfg, true
+	}
+	var matches []string
+	for key := range s.Hosts {
+		if normalizeHostname(key) == hostname {
+			matches = append(matches, key)
+		}
+	}
+	if len(matches) == 0 {
+		return "", HostConfig{}, false
+	}
+	sort.Strings(matches)
+	key := matches[0]
+	return key, s.Hosts[key], true
 }
 
 func intSlicesEqual(a, b []int) bool {
@@ -1374,7 +1482,8 @@ func singleJoiningSlash(a, b string) string {
 var hostnameRE = regexp.MustCompile(`^[a-z0-9.-]+$`)
 
 func validateHostnameStrict(domain string) error {
-	d := normalizeHost(domain)
+	host, port, hasPort := splitHostPort(domain)
+	d := normalizeHostname(host)
 	if d == "" {
 		return errors.New("empty hostname")
 	}
@@ -1403,6 +1512,12 @@ func validateHostnameStrict(domain string) error {
 		}
 		if strings.HasPrefix(lab, "-") || strings.HasSuffix(lab, "-") {
 			return fmt.Errorf("hostname label cannot start or end with hyphen: %q", lab)
+		}
+	}
+	if hasPort {
+		portNum, err := strconv.Atoi(port)
+		if err != nil || portNum < 1 || portNum > 65535 {
+			return fmt.Errorf("invalid port %q", port)
 		}
 	}
 	return nil
@@ -1503,7 +1618,7 @@ func ensureAdminUser() error {
 	if err := os.WriteFile(adminCredsFile, []byte(creds), 0600); err != nil {
 		return err
 	}
-	logger.Printf(`{"level":"info","msg":"admin user created","user":"admin","creds_file":%q}`, adminCredsFile)
+	logger.Printf(`{"level":"info","part":%q,"msg":"admin user created","user":"admin","creds_file":%q}`, logPartAdmin, adminCredsFile)
 	return nil
 }
 
@@ -1560,7 +1675,7 @@ func decodeConfigBytes(b []byte) (ConfigFile, bool, error) {
 			for domain, payload := range hostMap {
 				var hc HostConfig
 				if err := json.Unmarshal(payload, &hc); err != nil {
-					logger.Printf(`{"level":"warn","msg":"invalid host config skipped","host":%q,"err":%q}`, domain, err.Error())
+					logger.Printf(`{"level":"warn","part":%q,"msg":"invalid host config skipped","host":%q,"err":%q}`, logPartSystem, domain, err.Error())
 					continue
 				}
 				cfg.Hosts[domain] = hc
@@ -1582,7 +1697,7 @@ func decodeConfigBytes(b []byte) (ConfigFile, bool, error) {
 					}
 					var hc HostConfig
 					if err := json.Unmarshal(payload, &hc); err != nil {
-						logger.Printf(`{"level":"warn","msg":"invalid host config skipped","host":%q,"err":%q}`, domain, err.Error())
+						logger.Printf(`{"level":"warn","part":%q,"msg":"invalid host config skipped","host":%q,"err":%q}`, logPartSystem, domain, err.Error())
 						continue
 					}
 					cfg.Hosts[domain] = hc
@@ -1597,7 +1712,7 @@ func decodeConfigBytes(b []byte) (ConfigFile, bool, error) {
 			for name, payload := range certMap {
 				var cc CertConfig
 				if err := json.Unmarshal(payload, &cc); err != nil {
-					logger.Printf(`{"level":"warn","msg":"invalid cert config skipped","cert":%q,"err":%q}`, name, err.Error())
+					logger.Printf(`{"level":"warn","part":%q,"msg":"invalid cert config skipped","cert":%q,"err":%q}`, logPartSystem, name, err.Error())
 					continue
 				}
 				cfg.Certs[name] = cc
@@ -1619,7 +1734,7 @@ func decodeConfigBytes(b []byte) (ConfigFile, bool, error) {
 					}
 					var cc CertConfig
 					if err := json.Unmarshal(payload, &cc); err != nil {
-						logger.Printf(`{"level":"warn","msg":"invalid cert config skipped","cert":%q,"err":%q}`, name, err.Error())
+						logger.Printf(`{"level":"warn","part":%q,"msg":"invalid cert config skipped","cert":%q,"err":%q}`, logPartSystem, name, err.Error())
 						continue
 					}
 					cfg.Certs[name] = cc
@@ -1774,7 +1889,7 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 	for k, v := range cf.Hosts {
 		nk := normalizeHost(k)
 		if nk == "" || validateHostnameStrict(nk) != nil {
-			logger.Printf(`{"level":"warn","msg":"invalid hostname skipped on load","host":%q}`, nk)
+			logger.Printf(`{"level":"warn","part":%q,"msg":"invalid hostname skipped on load","host":%q}`, logPartSystem, nk)
 			changed = true
 			continue
 		}
@@ -1815,11 +1930,6 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 			changed = true
 		}
 		v.LoadBalancing = loadBalancing
-		healthPath := normalizeHealthCheckPath(v.HealthCheckPath)
-		if healthPath != v.HealthCheckPath {
-			changed = true
-		}
-		v.HealthCheckPath = healthPath
 		if v.SecurityTemplate == "" {
 			v.SecurityTemplate = "balanced"
 			changed = true
@@ -1892,7 +2002,7 @@ func cleanupUnusedCertFilesLocked() {
 			_ = os.Remove(c.KeyPath)
 		}
 		delete(mcfg.Certs, name)
-		logger.Printf(`{"level":"info","msg":"cleaned unused cert","cert":%q}`, name)
+		logger.Printf(`{"level":"info","part":%q,"msg":"cleaned unused cert","cert":%q}`, logPartSystem, name)
 	}
 }
 
@@ -1920,7 +2030,7 @@ func publishSnapshotLocked() {
 		}
 		tc, err := tls.LoadX509KeyPair(cc.CertPath, cc.KeyPath)
 		if err != nil {
-			logger.Printf(`{"level":"warn","msg":"failed loading custom cert","host":%q,"cert":%q,"err":%q}`, domain, hc.CertName, err.Error())
+			logger.Printf(`{"level":"warn","part":%q,"msg":"failed loading custom cert","host":%q,"cert":%q,"err":%q}`, logPartSystem, domain, hc.CertName, err.Error())
 			continue
 		}
 		custom[domain] = &tc
@@ -1929,7 +2039,7 @@ func publishSnapshotLocked() {
 	leHostSet := map[string]struct{}{}
 	minRenewDays := 0
 	addLEHost := func(domain string, renewDays int) {
-		domain = normalizeHost(domain)
+		domain = normalizeHostname(domain)
 		if domain == "" {
 			return
 		}
@@ -2023,7 +2133,7 @@ func getSnap() *ConfigSnapshot {
 
 func isUsingAutoCert(domain string) bool {
 	s := getSnap()
-	hc, ok := s.Hosts[domain]
+	_, hc, ok := findHostConfigForHostname(s, domain)
 	if !ok || !hc.SSL {
 		return false
 	}
@@ -2081,7 +2191,7 @@ func pickHealthyBackend(host string, backends []string) (string, bool) {
 	return backends[idx], false
 }
 
-func healthCheckOnce(host string, backend string, checkPath string) BackendHealth {
+func healthCheckOnce(host string, backend string) BackendHealth {
 	start := time.Now()
 	res := BackendHealth{LastCheck: start}
 	u, err := url.Parse(backend)
@@ -2104,10 +2214,7 @@ func healthCheckOnce(host string, backend string, checkPath string) BackendHealt
 		Timeout:   healthTimeout,
 		Transport: sharedTransport,
 	}
-	path := checkPath
-	if path == "" {
-		path = healthPath
-	}
+	path := healthPath
 	tryPaths := []string{path, "/"}
 	var lastErr error
 	var status int
@@ -2152,7 +2259,7 @@ func startHealthChecker(ctx context.Context) {
 				continue
 			}
 			for _, b := range hc.Backends {
-				h := healthCheckOnce(host, b, hc.HealthCheckPath)
+				h := healthCheckOnce(host, b)
 				setHealth(host, b, h)
 			}
 		}
@@ -2270,16 +2377,16 @@ func accessLogMiddleware(next http.Handler) http.Handler {
 			sw.status = 200
 		}
 		proxySummary := fmt.Sprintf("%s (Domain) proxied to %s (Backend)", host, backend)
-		logger.Printf(`{"level":"info","msg":"proxy_response","req_id":%q,"host":%q,"backend":%q,"summary":%q,"method":%q,"path":%q,"status":%d}`,
-			reqID, host, backend, proxySummary, r.Method, r.URL.RequestURI(), sw.status)
+		logger.Printf(`{"level":"info","part":%q,"msg":"proxy_response","req_id":%q,"host":%q,"backend":%q,"summary":%q,"method":%q,"path":%q,"status":%d}`,
+			logPartProxy, reqID, host, backend, proxySummary, r.Method, r.URL.RequestURI(), sw.status)
 		recordTraffic(time.Now(), sw.bytes)
 		if atomic.LoadUint32(&logLevel) == logLevelDebug {
 			proto := "http"
 			if r.TLS != nil {
 				proto = "https"
 			}
-			logger.Printf(`{"level":"debug","msg":"proxy_response_detail","req_id":%q,"remote":%q,"host":%q,"backend":%q,"backend_host":%q,"backend_scheme":%q,"summary":%q,"method":%q,"path":%q,"proto":%q,"status":%d,"bytes":%d,"dur_ms":%d}`,
-				reqID, r.RemoteAddr, host, backend, backendHost, backendScheme, proxySummary, r.Method, r.URL.RequestURI(), proto, sw.status, sw.bytes, dur)
+			logger.Printf(`{"level":"debug","part":%q,"msg":"proxy_response_detail","req_id":%q,"remote":%q,"host":%q,"backend":%q,"backend_host":%q,"backend_scheme":%q,"summary":%q,"method":%q,"path":%q,"proto":%q,"status":%d,"bytes":%d,"dur_ms":%d}`,
+				logPartProxy, reqID, r.RemoteAddr, host, backend, backendHost, backendScheme, proxySummary, r.Method, r.URL.RequestURI(), proto, sw.status, sw.bytes, dur)
 		}
 	})
 }
@@ -2448,10 +2555,10 @@ func mirrorRequest(r *http.Request, primary string, mirrors []string, body []byt
 
 func logSecurityIntegrationHints(integrations SecurityIntegrations, host, ip, reason string) {
 	if integrations.Fail2Ban {
-		logger.Printf(`{"level":"warn","msg":"fail2ban hint","host":%q,"ip":%q,"reason":%q}`, host, ip, reason)
+		logger.Printf(`{"level":"warn","part":%q,"msg":"fail2ban hint","host":%q,"ip":%q,"reason":%q}`, logPartProxy, host, ip, reason)
 	}
 	if integrations.CrowdSec {
-		logger.Printf(`{"level":"warn","msg":"crowdsec hint","host":%q,"ip":%q,"reason":%q}`, host, ip, reason)
+		logger.Printf(`{"level":"warn","part":%q,"msg":"crowdsec hint","host":%q,"ip":%q,"reason":%q}`, logPartProxy, host, ip, reason)
 	}
 }
 
@@ -2463,10 +2570,13 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 	}
 
 	s := getSnap()
-	cfg, ok := s.Hosts[host]
+	hostKey, cfg, ok := findHostConfig(s, host)
 	if !ok || len(cfg.Backends) == 0 {
 		http.Error(w, "502 Bad Gateway - No backend configured", http.StatusBadGateway)
 		return
+	}
+	if hostKey == "" {
+		hostKey = host
 	}
 
 	if isHTTPS && !cfg.SSL {
@@ -2490,24 +2600,24 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 
 	clientIP := getClientIP(r)
 	if matched, rule := ipInList(clientIP, cfg.Denylist); matched {
-		logger.Printf(`{"level":"warn","msg":"request denied by denylist","host":%q,"ip":%q,"rule":%q}`, host, clientIP, rule)
-		logSecurityIntegrationHints(cfg.SecurityIntegrations, host, clientIP, "denylist:"+rule)
+		logger.Printf(`{"level":"warn","part":%q,"msg":"request denied by denylist","host":%q,"ip":%q,"rule":%q}`, logPartProxy, hostKey, clientIP, rule)
+		logSecurityIntegrationHints(cfg.SecurityIntegrations, hostKey, clientIP, "denylist:"+rule)
 		http.Error(w, "403 Forbidden - Access denied", http.StatusForbidden)
 		return
 	}
 	if len(cfg.Allowlist) > 0 {
 		if matched, _ := ipInList(clientIP, cfg.Allowlist); !matched {
-			logger.Printf(`{"level":"warn","msg":"request rejected (not in allowlist)","host":%q,"ip":%q}`, host, clientIP)
-			logSecurityIntegrationHints(cfg.SecurityIntegrations, host, clientIP, "allowlist")
+			logger.Printf(`{"level":"warn","part":%q,"msg":"request rejected (not in allowlist)","host":%q,"ip":%q}`, logPartProxy, hostKey, clientIP)
+			logSecurityIntegrationHints(cfg.SecurityIntegrations, hostKey, clientIP, "allowlist")
 			http.Error(w, "403 Forbidden - Access restricted", http.StatusForbidden)
 			return
 		}
 	}
 	if cfg.RateLimitPerMinute > 0 {
-		key := host + "|" + clientIP
+		key := hostKey + "|" + clientIP
 		if !requestLimiter.Allow(key, cfg.RateLimitPerMinute) {
-			logger.Printf(`{"level":"warn","msg":"rate limit exceeded","host":%q,"ip":%q,"limit_per_min":%d}`, host, clientIP, cfg.RateLimitPerMinute)
-			logSecurityIntegrationHints(cfg.SecurityIntegrations, host, clientIP, "rate_limit")
+			logger.Printf(`{"level":"warn","part":%q,"msg":"rate limit exceeded","host":%q,"ip":%q,"limit_per_min":%d}`, logPartProxy, hostKey, clientIP, cfg.RateLimitPerMinute)
+			logSecurityIntegrationHints(cfg.SecurityIntegrations, hostKey, clientIP, "rate_limit")
 			http.Error(w, "429 Too Many Requests - Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
@@ -2519,8 +2629,8 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 	if cfg.WAFEnabled && !isWSUpgrade {
 		profile := normalizeWAFProfile(cfg.WAFProfile)
 		if match, blocked := wafDetect(r, profile, cfg.WAFRules, bodyBytes); blocked {
-			logger.Printf(`{"level":"warn","msg":"waf blocked request","host":%q,"ip":%q,"rule":%q,"path":%q}`, host, clientIP, match, r.URL.RequestURI())
-			logSecurityIntegrationHints(cfg.SecurityIntegrations, host, clientIP, "waf:"+match)
+			logger.Printf(`{"level":"warn","part":%q,"msg":"waf blocked request","host":%q,"ip":%q,"rule":%q,"path":%q}`, logPartProxy, hostKey, clientIP, match, r.URL.RequestURI())
+			logSecurityIntegrationHints(cfg.SecurityIntegrations, hostKey, clientIP, "waf:"+match)
 			http.Error(w, "403 Forbidden - Request blocked", http.StatusForbidden)
 			return
 		}
@@ -2557,7 +2667,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 	}
 
 	// Pick backend
-	backend := pickBackendForRequest(host, cfg, r)
+	backend := pickBackendForRequest(hostKey, cfg, r)
 	r.Header.Set("X-Proxy-Backend", backend)
 	if len(cfg.MirrorBackends) > 0 {
 		mirrorRequest(r, backend, cfg.MirrorBackends, bodyBytes)
@@ -2673,7 +2783,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 				newPath = base + fallback
 			}
 
-			logger.Printf(`{"level":"info","msg":"websocket 404 fallback","host":%q,"trying_path":%q}`, host, newPath)
+			logger.Printf(`{"level":"info","part":%q,"msg":"websocket 404 fallback","host":%q,"trying_path":%q}`, logPartProxy, hostKey, newPath)
 
 			// Clone request with new path
 			fallbackReq := r.Clone(r.Context())
@@ -2691,7 +2801,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request, isHTTPS bool) {
 
 	// ErrorHandler for network errors
 	rp.ErrorHandler = func(w http.ResponseWriter, req *http.Request, err error) {
-		logger.Printf(`{"level":"error","msg":"upstream connection error","host":%q,"path":%q,"err":%q}`, host, req.URL.Path, err.Error())
+		logger.Printf(`{"level":"error","part":%q,"msg":"upstream connection error","host":%q,"path":%q,"err":%q}`, logPartProxy, hostKey, req.URL.Path, err.Error())
 		http.Error(w, "502 Bad Gateway - Backend unreachable", http.StatusBadGateway)
 	}
 
@@ -2719,12 +2829,12 @@ func triggerLECertIssuanceFor(domain string, certName string) {
 		}
 		cert, err := certManager.GetCertificate(hello)
 		if err != nil {
-			logger.Printf(`{"level":"warn","msg":"autocert immediate issuance failed","host":%q,"err":%q}`, domain, err.Error())
+			logger.Printf(`{"level":"warn","part":%q,"msg":"autocert immediate issuance failed","host":%q,"err":%q}`, logPartSystem, domain, err.Error())
 			return
 		}
 		certPath, keyPath, err := writeLECertFiles(certName, domain, cert)
 		if err != nil {
-			logger.Printf(`{"level":"warn","msg":"failed writing LE cert files","host":%q,"err":%q}`, domain, err.Error())
+			logger.Printf(`{"level":"warn","part":%q,"msg":"failed writing LE cert files","host":%q,"err":%q}`, logPartSystem, domain, err.Error())
 			return
 		}
 		if certName != "" {
@@ -2744,9 +2854,9 @@ func triggerLECertIssuanceFor(domain string, certName string) {
 		leaf := cert.Leaf
 		if leaf != nil {
 			expires := leaf.NotAfter.Format("2006-01-02")
-			logger.Printf(`{"level":"info","msg":"autocert certificate obtained","host":%q,"expires":%q}`, domain, expires)
+			logger.Printf(`{"level":"info","part":%q,"msg":"autocert certificate obtained","host":%q,"expires":%q}`, logPartSystem, domain, expires)
 		} else {
-			logger.Printf(`{"level":"info","msg":"autocert certificate obtained","host":%q}`, domain)
+			logger.Printf(`{"level":"info","part":%q,"msg":"autocert certificate obtained","host":%q}`, logPartSystem, domain)
 		}
 	}()
 }
@@ -2823,15 +2933,15 @@ func httpsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	domain := normalizeHost(hello.ServerName)
-	if domain == "" {
+	hostname := normalizeHostname(hello.ServerName)
+	if hostname == "" {
 		return nil, fmt.Errorf("missing server name")
 	}
 
 	s := getSnap()
-	hc, ok := s.Hosts[domain]
+	key, hc, ok := findHostConfigForHostname(s, hostname)
 	if !ok || !hc.SSL {
-		return nil, fmt.Errorf("no SSL config for %s", domain)
+		return nil, fmt.Errorf("no SSL config for %s", hostname)
 	}
 
 	// Use Let's Encrypt (autocert) if AutoCert is enabled
@@ -2842,14 +2952,14 @@ func getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 
 	// Otherwise, use custom certificate if configured
 	if hc.CertName != "" {
-		customCert, ok := s.CustomCerts[domain]
+		customCert, ok := s.CustomCerts[key]
 		if !ok {
-			return nil, fmt.Errorf("custom certificate not loaded for %s", domain)
+			return nil, fmt.Errorf("custom certificate not loaded for %s", hostname)
 		}
 		return customCert, nil
 	}
 
-	return nil, fmt.Errorf("no certificate available for %s", domain)
+	return nil, fmt.Errorf("no certificate available for %s", hostname)
 }
 
 type apiResp struct {
@@ -2907,7 +3017,6 @@ func adminAPIConfigHandler(w http.ResponseWriter, r *http.Request) {
 		Webhook              string                   `json:"webhook"`
 		ExploitBlocks        ExploitBlockConfig       `json:"exploit_blocks"`
 		LoadBalancing        string                   `json:"load_balancing"`
-		HealthCheckPath      string                   `json:"health_check_path"`
 		SecurityTemplate     string                   `json:"security_template"`
 		SecurityIntegrations SecurityIntegrations     `json:"security_integrations"`
 		RequireAuth          bool                     `json:"require_auth"`
@@ -2936,7 +3045,6 @@ func adminAPIConfigHandler(w http.ResponseWriter, r *http.Request) {
 			Webhook:              hc.Webhook,
 			ExploitBlocks:        hc.ExploitBlocks,
 			LoadBalancing:        hc.LoadBalancing,
-			HealthCheckPath:      hc.HealthCheckPath,
 			SecurityTemplate:     hc.SecurityTemplate,
 			SecurityIntegrations: hc.SecurityIntegrations,
 			RequireAuth:          hc.RequireAuth,
@@ -3100,7 +3208,6 @@ type hostUpsertReq struct {
 	ExploitBlocks        ExploitBlockConfig   `json:"exploit_blocks"`
 	BlockExploits        *bool                `json:"block_exploits"`
 	LoadBalancing        string               `json:"load_balancing"`
-	HealthCheckPath      string               `json:"health_check_path"`
 	SecurityTemplate     string               `json:"security_template"`
 	SecurityIntegrations SecurityIntegrations `json:"security_integrations"`
 	RequireAuth          bool                 `json:"require_auth"`
@@ -3190,12 +3297,6 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, apiResp{OK: false, Error: "invalid load balancing strategy"})
 		return
 	}
-	healthPath := normalizeHealthCheckPath(req.HealthCheckPath)
-	if req.HealthCheckPath != "" && healthPath == "" {
-		writeJSON(w, 400, apiResp{OK: false, Error: "health check path must start with / and contain no spaces"})
-		return
-	}
-
 	mu.Lock()
 
 	// Remember previous config to detect new LE domains
@@ -3233,7 +3334,6 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 		Webhook:              strings.TrimSpace(req.Webhook),
 		ExploitBlocks:        blocks,
 		LoadBalancing:        loadBalancing,
-		HealthCheckPath:      healthPath,
 		SecurityTemplate:     securityTemplate,
 		SecurityIntegrations: req.SecurityIntegrations,
 		RequireAuth:          req.RequireAuth,
@@ -3295,7 +3395,7 @@ func adminAPIHostUpsert(w http.ResponseWriter, r *http.Request) {
 
 	// Refresh health checks
 	for _, b := range valid {
-		setHealth(domain, b, healthCheckOnce(domain, b, hc.HealthCheckPath))
+		setHealth(domain, b, healthCheckOnce(domain, b))
 	}
 
 	recordAudit(r, "host.upsert", domain, "updated proxy host")
@@ -4397,7 +4497,7 @@ func requireRole(w http.ResponseWriter, r *http.Request, role string) bool {
 
 func logError(msg string, err error) {
 	if err != nil {
-		logger.Printf(`{"level":"error","msg":%q,"err":%q}`, msg, err.Error())
+		logger.Printf(`{"level":"error","part":%q,"msg":%q,"err":%q}`, logPartSystem, msg, err.Error())
 	}
 }
 
@@ -4416,19 +4516,19 @@ func recordAudit(r *http.Request, action, target, detail string) {
 		Detail: detail,
 	}
 	audits.add(entry)
-	logger.Printf(`{"level":"info","msg":"audit","user":%q,"action":%q,"target":%q,"detail":%q}`, entry.User, entry.Action, entry.Target, entry.Detail)
+	logger.Printf(`{"level":"info","part":%q,"msg":"audit","user":%q,"action":%q,"target":%q,"detail":%q}`, logPartAudit, entry.User, entry.Action, entry.Target, entry.Detail)
 }
 
 func startHTTP3Server(handler http.Handler, port int, settings GlobalSettings) {
 	_ = handler
 	if settings.HTTP3Enabled {
-		logger.Printf(`{"level":"warn","msg":"http3 support unavailable (build without quic module)","addr":%q}`, fmt.Sprintf(":%d/udp", port))
+		logger.Printf(`{"level":"warn","part":%q,"msg":"http3 support unavailable (build without quic module)","addr":%q}`, logPartSystem, fmt.Sprintf(":%d/udp", port))
 	}
 }
 
 func startHTTPServer(port int, handler http.Handler) {
 	addr := fmt.Sprintf(":%d", port)
-	logger.Printf(`{"level":"info","msg":"http listening","addr":%q}`, addr)
+	logger.Printf(`{"level":"info","part":%q,"msg":"http listening","addr":%q}`, logPartSystem, addr)
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
@@ -4437,7 +4537,10 @@ func startHTTPServer(port int, handler http.Handler) {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
-	log.Fatal(srv.ListenAndServe())
+	if err := srv.ListenAndServe(); err != nil {
+		logger.Printf(`{"level":"error","part":%q,"msg":"http server error","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
+	}
 }
 
 func startHTTPSServer(port int, handler http.Handler) {
@@ -4455,17 +4558,42 @@ func startHTTPSServer(port int, handler http.Handler) {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	logger.Printf(`{"level":"info","msg":"https proxy listening","addr":%q}`, addr)
-	log.Fatal(httpsSrv.ListenAndServeTLS("", ""))
+	logger.Printf(`{"level":"info","part":%q,"msg":"https proxy listening","addr":%q}`, logPartSystem, addr)
+	if err := httpsSrv.ListenAndServeTLS("", ""); err != nil {
+		logger.Printf(`{"level":"error","part":%q,"msg":"https server error","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
+	}
 }
 
 func ensureWorkingDir() {
 	if err := os.MkdirAll(workingDir, 0755); err != nil {
-		log.Fatalf("Failed to create working dir: %v", err)
+		logger.Printf(`{"level":"error","part":%q,"msg":"failed to create working dir","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
 	}
 	if err := os.Chdir(workingDir); err != nil {
-		log.Fatalf("Failed to set working dir: %v", err)
+		logger.Printf(`{"level":"error","part":%q,"msg":"failed to set working dir","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
 	}
+}
+
+func setupLogging() {
+	logDir := filepath.Join(workingDir, logsDir)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		logger.Printf(`{"level":"error","part":%q,"msg":"failed to create logs directory","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
+	}
+	parts := []string{logPartSystem, logPartProxy, logPartAdmin, logPartAudit, logPartStream}
+	partWriters := make(map[string]io.Writer, len(parts))
+	for _, part := range parts {
+		path := filepath.Join(logDir, part+".json")
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			logger.Printf(`{"level":"error","part":%q,"msg":"failed to open log file","log_file":%q,"err":%q}`, logPartSystem, path, err.Error())
+			os.Exit(1)
+		}
+		partWriters[part] = f
+	}
+	logSink.setOutputs(os.Stdout, partWriters)
 }
 
 func main() {
@@ -4473,8 +4601,10 @@ func main() {
 	flag.Parse()
 
 	ensureWorkingDir()
+	setupLogging()
 	if err := os.MkdirAll(cacheDir, 0700); err != nil {
-		log.Fatalf("Failed to create cache dir: %v", err)
+		logger.Printf(`{"level":"error","part":%q,"msg":"failed to create cache dir","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
 	}
 
 	configExists := true
@@ -4482,13 +4612,15 @@ func main() {
 		if os.IsNotExist(err) {
 			configExists = false
 		} else {
-			log.Fatalf("config check error: %v", err)
+			logger.Printf(`{"level":"error","part":%q,"msg":"config check error","err":%q}`, logPartSystem, err.Error())
+			os.Exit(1)
 		}
 	}
 
 	changed, err := loadConfigFromDisk()
 	if err != nil {
-		log.Fatalf("loadConfig error: %v", err)
+		logger.Printf(`{"level":"error","part":%q,"msg":"load config error","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
 	}
 	if *upgradeConfig {
 		if !configExists {
@@ -4503,7 +4635,8 @@ func main() {
 		return
 	}
 	if err := ensureAdminUser(); err != nil {
-		log.Fatalf("ensure admin error: %v", err)
+		logger.Printf(`{"level":"error","part":%q,"msg":"ensure admin error","err":%q}`, logPartSystem, err.Error())
+		os.Exit(1)
 	}
 
 	mu.Lock()
@@ -4519,7 +4652,7 @@ func main() {
 			for _, domain := range s.LEHosts {
 				hello := &tls.ClientHelloInfo{ServerName: domain}
 				if _, err := certManager.GetCertificate(hello); err != nil {
-					logger.Printf(`{"level":"warn","msg":"autocert warmup failed","host":%q,"err":%q}`, domain, err.Error())
+					logger.Printf(`{"level":"warn","part":%q,"msg":"autocert warmup failed","host":%q,"err":%q}`, logPartSystem, domain, err.Error())
 				}
 			}
 		}
@@ -4555,7 +4688,7 @@ func main() {
 	})
 
 	go func() {
-		logger.Printf(`{"level":"info","msg":"admin ui listening","addr":":8081","note":"remote access enabled; consider firewalling"}`)
+		logger.Printf(`{"level":"info","part":%q,"msg":"admin ui listening","addr":":8081","note":"remote access enabled; consider firewalling"}`, logPartAdmin)
 		srv := &http.Server{
 			Addr:              ":8081",
 			Handler:           adminAuthMiddleware(adminMux),
@@ -4564,7 +4697,10 @@ func main() {
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       2 * time.Minute,
 		}
-		log.Fatal(srv.ListenAndServe())
+		if err := srv.ListenAndServe(); err != nil {
+			logger.Printf(`{"level":"error","part":%q,"msg":"admin ui server error","err":%q}`, logPartAdmin, err.Error())
+			os.Exit(1)
+		}
 	}()
 
 	proxyMux := http.NewServeMux()
