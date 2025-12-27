@@ -26,7 +26,7 @@ go run .
 ```
 
 The admin UI is served on `http://localhost:8081/admin`.
-The application expects the working directory to be `/opt`, which is where it reads and writes
+The application expects the working directory to be `/opt/puffproxy`, which is where it reads and writes
 `proxy_config.json`, `.admin_credentials`, and related assets.
 
 ## Configuration
