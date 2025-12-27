@@ -68,7 +68,7 @@ uninstall() {
 
   $SUDO rm -f /usr/local/bin/puffproxy
 
-  echo "PeaPufferProxy (puffproxy) is uninstalled. Data in /opt was left intact."
+  echo "PeaPufferProxy (puffproxy) is uninstalled. Data in /opt/puffproxy was left intact."
 }
 
 install_packages() {
@@ -117,7 +117,7 @@ $SUDO install -m 0755 /tmp/puffproxy /usr/local/bin/puffproxy
 rm -f /tmp/puffproxy
 
 SERVICE_USER="root"
-SERVICE_HOME="/opt"
+SERVICE_HOME="/opt/puffproxy"
 
 $SUDO install -d -m 0755 "${SERVICE_HOME}"
 $SUDO install -d -m 0755 "${SERVICE_HOME}/certs"
