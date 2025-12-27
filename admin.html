@@ -1388,10 +1388,17 @@ button:focus-visible, input:focus-visible {
       const wafProfile = normalizeWafProfile(host.waf_profile || 'custom');
       const wafRules = host.waf_rules || {};
       const totalWafGroups = wafRuleFields.length;
-      const configuredGroups = Object.keys(wafRules).length
-        ? wafRuleFields.filter(f => wafRules[f.key] !== false).length
-        : totalWafGroups;
-      const enabledGroups = wafEnabled ? configuredGroups : 0;
+      let enabledGroups = 0;
+      if (wafEnabled) {
+        if (wafProfile !== 'custom') {
+          const profileRules = wafProfiles[wafProfile] || {};
+          enabledGroups = wafRuleFields.filter(f => !!profileRules[f.key]).length;
+        } else if (Object.keys(wafRules).length) {
+          enabledGroups = wafRuleFields.filter(f => wafRules[f.key] !== false).length;
+        } else {
+          enabledGroups = totalWafGroups;
+        }
+      }
       const wafDetail = wafEnabled ? wafProfileLabel(wafProfile) : 'Disabled';
       const template = host.security_template ? esc(host.security_template) : 'custom';
       const rateLimit = host.rate_limit_per_minute > 0 ? `${host.rate_limit_per_minute}/min` : 'None';
