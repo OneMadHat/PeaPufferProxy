@@ -8,9 +8,36 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+usage() {
+  cat <<'USAGE'
+Usage: ./setup.sh [--uninstall]
+
+Options:
+  --uninstall  Remove the puffproxy service, binary, and systemd unit.
+USAGE
+}
+
 if [[ ! -f "${ROOT_DIR}/go.mod" ]]; then
   echo "Run this script from the repository root." >&2
   exit 1
+fi
+
+ACTION="install"
+if [[ $# -gt 0 ]]; then
+  case "${1}" in
+    --uninstall|uninstall)
+      ACTION="uninstall"
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: ${1}" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
 fi
 
 SUDO=""
@@ -25,6 +52,23 @@ fi
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
+}
+
+uninstall() {
+  if have_cmd systemctl; then
+    $SUDO systemctl disable --now puffproxy >/dev/null 2>&1 || true
+  fi
+
+  if [[ -f /etc/systemd/system/puffproxy.service ]]; then
+    $SUDO rm -f /etc/systemd/system/puffproxy.service
+    if have_cmd systemctl; then
+      $SUDO systemctl daemon-reload
+    fi
+  fi
+
+  $SUDO rm -f /usr/local/bin/puffproxy
+
+  echo "PeaPufferProxy (puffproxy) is uninstalled. Data in /opt was left intact."
 }
 
 install_packages() {
@@ -49,6 +93,11 @@ install_packages() {
   fi
 }
 
+if [[ "${ACTION}" == "uninstall" ]]; then
+  uninstall
+  exit 0
+fi
+
 if ! have_cmd go; then
   echo "Go not found. Installing dependencies..."
   install_packages
@@ -67,21 +116,13 @@ go build -o /tmp/puffproxy
 $SUDO install -m 0755 /tmp/puffproxy /usr/local/bin/puffproxy
 rm -f /tmp/puffproxy
 
-SERVICE_USER="puffproxy"
-SERVICE_HOME="/var/lib/puffproxy"
-
-if ! id -u "${SERVICE_USER}" >/dev/null 2>&1; then
-  $SUDO useradd \
-    --system \
-    --home-dir "${SERVICE_HOME}" \
-    --create-home \
-    --shell /usr/sbin/nologin \
-    "${SERVICE_USER}"
-fi
+SERVICE_USER="root"
+SERVICE_HOME="/opt"
 
 $SUDO install -d -m 0755 "${SERVICE_HOME}"
 $SUDO install -d -m 0755 "${SERVICE_HOME}/certs"
-$SUDO chown -R "${SERVICE_USER}:${SERVICE_USER}" "${SERVICE_HOME}"
+$SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${SERVICE_HOME}"
+$SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${SERVICE_HOME}/certs"
 
 CONFIG_FILE="${SERVICE_HOME}/proxy_config.json"
 if [[ ! -f "${CONFIG_FILE}" ]]; then
@@ -92,8 +133,15 @@ if [[ ! -f "${CONFIG_FILE}" ]]; then
   "users": {}
 }
 JSON
-  $SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${CONFIG_FILE}"
 fi
+$SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${CONFIG_FILE}"
+
+ADMIN_FILE="${SERVICE_HOME}/.admin_credentials"
+if [[ ! -f "${ADMIN_FILE}" ]]; then
+  $SUDO touch "${ADMIN_FILE}"
+fi
+$SUDO chmod 0600 "${ADMIN_FILE}"
+$SUDO chown "${SERVICE_USER}:${SERVICE_USER}" "${ADMIN_FILE}"
 
 SERVICE_FILE="/etc/systemd/system/puffproxy.service"
 cat <<SERVICE | $SUDO tee "${SERVICE_FILE}" >/dev/null
