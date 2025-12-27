@@ -2119,6 +2119,7 @@ button:focus-visible, input:focus-visible {
 
       const payload = {
         domain,
+        previous_domain: editingHost || '',
         backends,
         geo_routing: geoRouting,
         mirror_backends: mirrorBackends,
