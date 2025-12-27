@@ -5,7 +5,7 @@ PeaPufferProxy (puffproxy for short) is a small Go-based reverse proxy manager w
 ## Features
 
 - HTTP/HTTPS reverse proxy with optional WebSocket support
-- Per-host TLS (Let's Encrypt or custom certificates)
+- Per-host TLS (Let's Encrypt or custom certificates)  (The Auto generated LE might not work.)
 - Optional per-host authentication
 - Per-host exploit protection headers (toggle each header)
 - Built-in security controls (WAF screening, origin shielding, IP allow/deny lists, per-host rate limits)
