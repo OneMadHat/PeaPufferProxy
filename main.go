@@ -1716,7 +1716,7 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 		changed = true
 	}
 	cf.StreamProxies = normalizedStreams
-	if cf.Settings == (GlobalSettings{}) {
+	if isZeroGlobalSettings(cf.Settings) {
 		cf.Settings = GlobalSettings{
 			HTTP3Enabled:   false,
 			HTTP3Advertise: false,
@@ -1863,6 +1863,15 @@ func normalizeConfig(cf ConfigFile) (ConfigFile, bool) {
 		}
 	}
 	return cf, changed
+}
+
+func isZeroGlobalSettings(settings GlobalSettings) bool {
+	return !settings.HTTP3Enabled &&
+		!settings.HTTP3Advertise &&
+		settings.HTTP3MaxAge == 0 &&
+		len(settings.HTTPPorts) == 0 &&
+		len(settings.HTTPSPorts) == 0 &&
+		settings.UpdateChannel == ""
 }
 
 func cleanupUnusedCertFilesLocked() {
