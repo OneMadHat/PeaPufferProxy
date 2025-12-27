@@ -32,6 +32,10 @@ The admin UI is served on `http://localhost:8081/admin`.
 Configuration is stored in `proxy_config.json` in the working directory. The app will normalize
 older formats on startup (e.g., array-based host lists) and rewrite the file.
 
+On first start, puffproxy creates a default `admin` user. The generated password is written in
+plaintext to `.admin_credentials` in the working directory, and the hashed password is stored in
+`proxy_config.json` under `users`.
+
 Example:
 
 ```json
